@@ -9,7 +9,7 @@ public class FishController : MonoBehaviour
     GameObject plants, fishes, baby;
     AlgaeController foodItem;
     public Vector3 targetPosition;
-    int tick = 0,
+    int tick,
         maxFood = 200,
         reproduceThreshold = 200;
     public int reproduceCount;
@@ -31,13 +31,15 @@ public class FishController : MonoBehaviour
     }
 
     void Start() {
+        tick = Random.Range(0, 9);
+
         rb = gameObject.GetComponent<Rigidbody>();
         plants = GameObject.Find("Plants");
+        fishes = GameObject.Find("Fishes");
         behavior = Behavior.idle;
         
         // Prefabs
         baby = Resources.Load("Prefabs/Fish") as GameObject;
-        fishes = GameObject.Find("Fishes");
 
         Retarget();
 
@@ -246,7 +248,6 @@ public class FishController : MonoBehaviour
     }
 
     void Reproduce() {
-        Debug.Log("BABY TIME");
         Vector3 pos = transform.position;
         pos.x += Random.Range(-1f, 1f);
         pos.z += Random.Range(-1f, 1f);
@@ -261,7 +262,6 @@ public class FishController : MonoBehaviour
     }
 
     void Die() {
-        Debug.Log("DED");
         Destroy(transform.gameObject);
     }
 }

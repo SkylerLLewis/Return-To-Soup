@@ -7,17 +7,19 @@ public class AlgaeController : MonoBehaviour
 {
     Rigidbody rb;
     GameObject baby, plants;
-    int tick = 0,
+    int tick,
         reproduceThreshold = 100;
     public int reproduceCount;
     public int health;
     float diameter = 0.75f;
     void Start() {
+        tick = Random.Range(0, 9);
+
         rb = gameObject.GetComponent<Rigidbody>();
         baby = Resources.Load("Prefabs/Algae") as GameObject;
         plants = GameObject.Find("Plants");
 
-        reproduceCount = Random.Range(-reproduceThreshold, 0);
+        reproduceCount = Random.Range(0, reproduceThreshold);
         health = 50;
     }
 
@@ -33,7 +35,7 @@ public class AlgaeController : MonoBehaviour
             rb.AddForce(new Vector3(0, -100*(transform.position.y-0.1f), 0));
         }
 
-        if (tick == 9) {
+        if (tick == 10) {
             if (transform.position.y > 0.3f) {
                 Eaten();
             }

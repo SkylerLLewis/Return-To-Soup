@@ -1,12 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class CameraControl : MonoBehaviour
 {
     public Transform player;
     public Rigidbody body;
     public CharacterController character;
+    
+    TextMeshProUGUI plantCount, fishCount;
+    GameObject plants, fishes;
     Vector2 mouse;
     float sensitvity = 10,
         moveSpeed = 0.4f,
@@ -25,6 +29,14 @@ public class CameraControl : MonoBehaviour
         underwater = false;
         //skybox = Resources.Load<Material>("Resources/unity_builtin_extra");
         //seabox = Resources.Load<Material>("Seabox");
+        
+        plants = GameObject.Find("Plants");
+        fishes = GameObject.Find("Fishes");
+
+        plantCount = GameObject.Find("Plant Count").GetComponent<TextMeshProUGUI>();
+        fishCount = GameObject.Find("Fish Count").GetComponent<TextMeshProUGUI>();
+
+        InvokeRepeating("UpdateCounts", 0f, 5f);
     }
 
     // Update is called once per frame
@@ -94,5 +106,10 @@ public class CameraControl : MonoBehaviour
         if (escapePressed && !Input.GetKeyDown(KeyCode.Escape)) {
             escapePressed = false;
         }
+    }
+
+    void UpdateCounts() {
+        plantCount.text = plants.transform.childCount.ToString();
+        fishCount.text = fishes.transform.childCount.ToString();
     }
 }
