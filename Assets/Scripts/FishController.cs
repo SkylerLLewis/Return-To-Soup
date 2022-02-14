@@ -11,9 +11,9 @@ public class FishController : MonoBehaviour
     AlgaeController foodItem;
     public Vector3 targetPosition;
     int tick,
-        maxFood = 200,
-        reproduceThreshold = 200;
-    public int reproduceCount;
+        maxFood = 200;
+    public float reproduceTimer;
+    float reproduceDelay;
     public int food;
     float standoff = 1f;
     public Vector3 idleTorque;
@@ -21,7 +21,11 @@ public class FishController : MonoBehaviour
     public enum Behavior {idle, eat};
     public Behavior behavior;
     PID angleController, angVelController;
+    static float yawCoefficient = 0.1f,
+                 pitchCoefficient = 0.1f,
+                 rollCoefficient = 0.12f;
     Vector3 targetAngle, angleCorrection, angVelCorrection, torque;
+    int sightDistance = 256; // actual distance is 16, but using squared dists
 
     public float axisX {
         get { return transform.rotation.eulerAngles.x; }
@@ -57,7 +61,10 @@ public class FishController : MonoBehaviour
 
         idleTorque = Vector3.zero;
 
-        reproduceCount = Random.Range(-reproduceThreshold, 0);
+        reproduceTimer = Time.time - Random.Range(0, 30);
+        reproduceDelay = 90f * Random.Range(0.9f, 1.1f);
+
+
         food = maxFood/2;
     }
 
@@ -79,7 +86,7 @@ public class FishController : MonoBehaviour
         if (tick == 10) {
             // Manage Behavior changes
             // * These do need to happen before decisions are made
-            if (behavior == Behavior.idle && food < maxFood*0.75f) {
+            if (behavior == Behavior.idle && food < maxFood*0.8f) {
                 Retarget();
             }
             if (behavior == Behavior.eat && foodItem == null) {
@@ -94,7 +101,7 @@ public class FishController : MonoBehaviour
 
                 // Swimmy swimmy
                 if (rb.velocity.magnitude < 4 && targetVec.magnitude > standoff) {
-                    rb.AddForce(Vector3.Normalize(transform.right)*50);
+                    rb.AddForce(Vector3.Normalize(transform.right)*40);
                 } else if (targetVec.magnitude < standoff * 0.75f) {
                     rb.AddForce(Vector3.Normalize(transform.right)*-50);
                 }
@@ -102,8 +109,9 @@ public class FishController : MonoBehaviour
                   // --------------------- //
                  // -- Roll Correction -- //
                 // --------------------- //
-                angleCorrection.x = angleController.Output(Mathf.DeltaAngle(axisX, 0), Time.fixedDeltaTime);
-                angVelCorrection.x = angVelController.Output(-rb.angularVelocity.x, Time.fixedDeltaTime); 
+                //angleCorrection.x = angleController.Output(Mathf.DeltaAngle(axisX, 0), Time.fixedDeltaTime);
+                //angVelCorrection.x = angVelController.Output(-rb.angularVelocity.x, Time.fixedDeltaTime); 
+                angleCorrection.x = Mathf.DeltaAngle(axisX, 0) * rollCoefficient;
 
                   // ------------------- //
                  // -- Yaw Targeting -- //
@@ -112,14 +120,9 @@ public class FishController : MonoBehaviour
                 targetAngle.y = targetY;
                 float currentY = transform.rotation.eulerAngles.y;
                 float deltaY = Mathf.DeltaAngle(currentY, targetY);
-                angleCorrection.y = angleController.Output(deltaY, Time.fixedDeltaTime);
-                angVelCorrection.y = angVelController.Output(-rb.angularVelocity.y, Time.fixedDeltaTime); 
-
-                //Debug.Log(s);
-                if (Mathf.Abs(deltaY) > 0.3f) {
-                    //rb.AddTorque(torque);
-                    //rb.AddRelativeTorque(new Vector3(0, (0.2f*deltaY), 0));
-                }
+                //angleCorrection.y = angleController.Output(deltaY, Time.fixedDeltaTime);
+                //angVelCorrection.y = angVelController.Output(-rb.angularVelocity.y, Time.fixedDeltaTime); 
+                angleCorrection.y = deltaY * yawCoefficient;
 
                   // --------------------- //
                  // -- Pitch Targeting -- //
@@ -129,8 +132,9 @@ public class FishController : MonoBehaviour
                 float targetZ = Mathf.Atan2(targetVec.y, Mathf.Sqrt(Mathf.Pow(targetVec.x, 2)+Mathf.Pow(targetVec.z, 2)))*Mathf.Rad2Deg;
                 float currentZ = transform.rotation.eulerAngles.z;
                 float deltaZ = Mathf.DeltaAngle(currentZ, targetZ);
-                angleCorrection.z = angleController.Output(deltaZ, Time.fixedDeltaTime);
-                angVelCorrection.z = angVelController.Output(-rb.angularVelocity.z, Time.fixedDeltaTime); 
+                //angleCorrection.z = angleController.Output(deltaZ, Time.fixedDeltaTime);
+                //angVelCorrection.z = angVelController.Output(-rb.angularVelocity.z, Time.fixedDeltaTime); 
+                angleCorrection.z = deltaZ * pitchCoefficient;
 
                   // -------------------- //
                  // -- Apply steering -- //
@@ -140,9 +144,8 @@ public class FishController : MonoBehaviour
                 s += "Pitch Delta: "+deltaZ+"\n";
                 s += "Angle Correction:  "+angleCorrection+"\n";
                 s += "AngVel Correction: "+angVelCorrection+"\n";
-                torque = angleCorrection;// + angVelCorrection;
-                rb.AddRelativeTorque(torque, ForceMode.VelocityChange);
-                s += "Torque: "+torque+"\n";
+                rb.AddRelativeTorque(angleCorrection, ForceMode.VelocityChange);
+                s += "Torque: "+angleCorrection+"\n";
                 //Debug.Log(s);
 
                   // ---------- //
@@ -155,7 +158,7 @@ public class FishController : MonoBehaviour
             // Wander idly
             } else if (behavior == Behavior.idle) {
                 // Swimmy swimmy
-                rb.AddForce(Vector3.Normalize(transform.right)*25);
+                rb.AddForce(Vector3.Normalize(transform.right)*30);
                 if (transform.position.y > 0) {
                     rb.AddForce(Vector3.Normalize(transform.right)*-100);
                 }
@@ -181,7 +184,6 @@ public class FishController : MonoBehaviour
             if (food <= 0) {
                 Die();
             }
-            reproduceCount++;
             tick = 0;
         }
         tick++;
@@ -211,12 +213,12 @@ public class FishController : MonoBehaviour
 	}
 
     void Retarget() {
+        foodItem = null;
         float bestDist = Mathf.Infinity;
         foreach (Transform child in plants.transform) {
-            //if (Mathf.Abs(child.position.x - transform.position.x) > 50) { continue; }
             float dist = (transform.position - child.position).sqrMagnitude;
-            if (dist < bestDist && dist < 100) {
-                bestDist = Vector3.Distance(child.position, transform.position);
+            if (dist < bestDist && dist < sightDistance) {
+                bestDist = dist;
                 foodItem = child.gameObject.GetComponent<AlgaeController>();
                 targetPosition = child.position;
             }
@@ -238,9 +240,8 @@ public class FishController : MonoBehaviour
             Idle();
             idleTorque.y = Random.Range(-2, 2);
             rb.AddForce(Vector3.Normalize(transform.right)*-100, ForceMode.Acceleration);
-            if (reproduceCount >= reproduceThreshold) {
+            if (Time.time - reproduceTimer > reproduceDelay) {
                 Reproduce();
-                reproduceCount = 0;
             }
         }
     }
@@ -250,8 +251,6 @@ public class FishController : MonoBehaviour
     }
 
     void Reproduce() {
-        // only a 1 in four chance of bebe
-        if (Random.Range(0,4) > 0){ return; }
         Vector3 pos = transform.position;
         pos.x += Random.Range(-1f, 1f);
         pos.z += Random.Range(-1f, 1f);
@@ -263,6 +262,7 @@ public class FishController : MonoBehaviour
             fishes.transform);
         clone.name = clone.name.Split('(')[0];
         food = maxFood/2;
+        reproduceTimer = Time.time;
     }
 
     void Die() {

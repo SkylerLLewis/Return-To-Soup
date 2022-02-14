@@ -4,19 +4,19 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 20,
+    static int seedPlants = 40,
                seedFish = 10;
     static Vector3 spawnCenter = new Vector3(-320, 5, 370),
                    spawnRange = new Vector3(60, 0, 70);
-    GameObject plants, fishes, plant, fish;
+    GameObject staticPlants, plants, fishes, plant, fish;
     int regenCounter = 0, regenThreshold = 500;
     public bool deadMode;
 
     void Start() {
-
         Screen.SetResolution (1920, 1080, false);
         QualitySettings.vSyncCount = 1;
         Application.targetFrameRate = 60;
+        staticPlants = GameObject.Find("Static Plants");
         plants = GameObject.Find("Plants");
         fishes = GameObject.Find("Fishes");
 
@@ -36,7 +36,7 @@ public class Initializer : MonoBehaviour
             }
         }
 
-        Time.timeScale = 10f;
+        Time.timeScale = 1f;
     }
 
     void Update() {
@@ -54,7 +54,7 @@ public class Initializer : MonoBehaviour
     }
 
     void Regrowth() {
-        SpawnAlgae();
+        //SpawnAlgae();
     }
 
     Vector3 FindWater() {
@@ -79,8 +79,9 @@ public class Initializer : MonoBehaviour
             plant,
             FindWater(),
             Quaternion.identity,
-            plants.transform);
+            staticPlants.transform);
         clone.name = clone.name.Split('(')[0];
+        clone.GetComponent<AlgaeController>().Grow();
     }
 
     void SpawnFish() {

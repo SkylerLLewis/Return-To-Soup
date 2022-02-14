@@ -73,7 +73,7 @@ public class CameraControl : MonoBehaviour
                 Vector3 moveBy = transform.right * forwardInput +
                                 transform.forward * lateralInput +
                                 transform.up * verticalInput;
-                character.Move(moveBy * moveSpeed);
+                character.Move(moveBy * moveSpeed);// / Time.deltaTime);
             }
 
             // Underwater Visual Effect
