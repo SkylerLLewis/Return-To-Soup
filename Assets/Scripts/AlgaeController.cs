@@ -7,20 +7,21 @@ public class AlgaeController : MonoBehaviour
 {
     Rigidbody rb;
     GameObject baby, plants;
-    int tick,
-        reproduceThreshold = 100;
+    //int tick, reproduceThreshold = 100;
+    float reproduceTimer;
     public int reproduceCount;
     public int health;
     float diameter = 0.75f;
     void Start() {
-        tick = Random.Range(0, 9);
-
         rb = gameObject.GetComponent<Rigidbody>();
         baby = Resources.Load("Prefabs/Algae") as GameObject;
         plants = GameObject.Find("Plants");
 
-        reproduceCount = Random.Range(0, reproduceThreshold);
+        //tick = Random.Range(0, 9);
+        //reproduceCount = Random.Range(0, reproduceThreshold);
+        reproduceTimer = 20f;
         health = 50;
+        InvokeRepeating("Reproduce", Random.Range(0f, reproduceTimer), reproduceTimer);
     }
 
     void Update() {
@@ -29,18 +30,18 @@ public class AlgaeController : MonoBehaviour
 
     private void FixedUpdate() {
         // Flotation
-        if (transform.position.y <= 0) {
+        /*if (transform.position.y <= 0) {
             rb.AddForce(Vector3.up*10);//, ForceMode.Acceleration);
         } else if (transform.position.y < 0.1f) {
             rb.AddForce(new Vector3(0, -100*(transform.position.y-0.1f), 0));
-        }
+        }*/
 
-        if (tick == 10) {
+        /*if (tick == 10) {
             if (transform.position.y > 0.3f) {
                 Eaten();
             }
             if (reproduceCount >= reproduceThreshold) {
-                if (Random.Range(0,4) < 1 && transform.position.y < 0.3f && transform.position.y > 0) {
+                if (Random.Range(0,4) < 1 && transform.position.y < 0.3f){// && transform.position.y > 0) {
                     Reproduce();
                 }
                 reproduceCount = 0;
@@ -48,10 +49,12 @@ public class AlgaeController : MonoBehaviour
             reproduceCount++;
             tick = 0;
         }
-        tick++;
+        tick++;*/
     }
 
     void Reproduce() {
+        // only a 1 in four chance of bebe
+        if (Random.Range(0,4) > 0){ return; }
         Vector3 pos = FindSpot();
         if (pos == Vector3.zero) { return; } // no room
         GameObject clone = Instantiate(

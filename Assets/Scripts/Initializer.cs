@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 40,
+    static int seedPlants = 20,
                seedFish = 10;
     static Vector3 spawnCenter = new Vector3(-320, 5, 370),
                    spawnRange = new Vector3(60, 0, 70);
@@ -13,6 +13,7 @@ public class Initializer : MonoBehaviour
     public bool deadMode;
 
     void Start() {
+
         Screen.SetResolution (1920, 1080, false);
         QualitySettings.vSyncCount = 1;
         Application.targetFrameRate = 60;
@@ -35,6 +36,7 @@ public class Initializer : MonoBehaviour
             }
         }
 
+        Time.timeScale = 10f;
     }
 
     void Update() {

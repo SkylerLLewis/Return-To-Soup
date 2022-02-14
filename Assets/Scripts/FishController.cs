@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using PIDtools;
+using util;
 
 public class FishController : MonoBehaviour
 {
@@ -58,8 +59,6 @@ public class FishController : MonoBehaviour
 
         reproduceCount = Random.Range(-reproduceThreshold, 0);
         food = maxFood/2;
-
-        //Time.timeScale = 0.5f;
     }
 
     void Update() {
@@ -212,18 +211,21 @@ public class FishController : MonoBehaviour
 	}
 
     void Retarget() {
-        float bestDist = 50;
+        float bestDist = Mathf.Infinity;
         foreach (Transform child in plants.transform) {
-            float dist = Vector3.Distance(child.position, transform.position);
-            if (dist < bestDist && dist < 50 &&
-            !Physics.Raycast(transform.position, child.position-transform.position, dist, LayerMask.GetMask("Terrain"))) {
+            //if (Mathf.Abs(child.position.x - transform.position.x) > 50) { continue; }
+            float dist = (transform.position - child.position).sqrMagnitude;
+            if (dist < bestDist && dist < 100) {
                 bestDist = Vector3.Distance(child.position, transform.position);
                 foodItem = child.gameObject.GetComponent<AlgaeController>();
                 targetPosition = child.position;
             }
         }
         if (foodItem != null) {
-            behavior = Behavior.eat;
+            Vector3 targetVec = foodItem.transform.position-transform.position;
+            if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
+                behavior = Behavior.eat;
+            }
         } else {
             Idle();
         }
@@ -236,7 +238,7 @@ public class FishController : MonoBehaviour
             Idle();
             idleTorque.y = Random.Range(-2, 2);
             rb.AddForce(Vector3.Normalize(transform.right)*-100, ForceMode.Acceleration);
-            if (reproduceCount >= reproduceThreshold && Random.Range(0,4) < 1) {
+            if (reproduceCount >= reproduceThreshold) {
                 Reproduce();
                 reproduceCount = 0;
             }
@@ -248,6 +250,8 @@ public class FishController : MonoBehaviour
     }
 
     void Reproduce() {
+        // only a 1 in four chance of bebe
+        if (Random.Range(0,4) > 0){ return; }
         Vector3 pos = transform.position;
         pos.x += Random.Range(-1f, 1f);
         pos.z += Random.Range(-1f, 1f);
