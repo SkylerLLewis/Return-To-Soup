@@ -8,24 +8,27 @@ public class FishController : MonoBehaviour
 {
     Rigidbody rb;
     GameObject plants, fishes, baby;
-    AlgaeController foodItem;
     public Vector3 targetPosition;
-    int tick,
-        maxFood = 200;
+    int tick;
+    float maxFood = 200;
     public float reproduceTimer;
     float reproduceDelay;
-    public int food;
+    public float food, health;
     float standoff = 1f;
     public Vector3 idleTorque;
 
-    public enum Behavior {idle, eat};
+    public enum Behavior {idle, eat, predate};
     public Behavior behavior;
     PID angleController, angVelController;
     static float yawCoefficient = 0.1f,
                  pitchCoefficient = 0.1f,
                  rollCoefficient = 0.12f;
+    float speed, maxSpeed, maxTurn;
+    Color scaleColor;
     Vector3 targetAngle, angleCorrection, angVelCorrection, torque;
     int sightDistance = 256; // actual distance is 16, but using squared dists
+
+    public float size, sizeSqr, herbivorousness;
 
     public float axisX {
         get { return transform.rotation.eulerAngles.x; }
@@ -35,7 +38,17 @@ public class FishController : MonoBehaviour
         }
     }
 
-    void Start() {
+    struct FoodItem {
+        public AlgaeController plant;
+        public FishController fish;
+
+        /*public FoodItem(Vector3 p, AlgaeController a, FishController f) {
+            position = p;
+        }*/
+    }
+    FoodItem foodItem;
+
+    void Awake() {
         tick = Random.Range(0, 9);
 
         rb = gameObject.GetComponent<Rigidbody>();
@@ -46,16 +59,13 @@ public class FishController : MonoBehaviour
         // Prefabs
         baby = Resources.Load("Prefabs/Fish") as GameObject;
 
+        // Stats
+        maxSpeed = 4;
+        speed = 40; // Newtons per 0.2sec
+        maxTurn = 2; // Newton meters per 0.2sec
+
         Retarget();
 
-        // The angle controller drives the ship's angle towards the target angle.
-		// This PID controller takes in the error between the ship's rotation angle 
-		// and the target angle as input, and returns a signed torque magnitude.
-        angleController = new PID(0.1f, 0.001f, 0.0005f);
-        // The angular veloicty controller drives the object's angular velocity to 0.
-		// This PID controller takes in the negated angular velocity of the object, 
-		// and returns a signed torque magnitude.
-        angVelController = new PID(0.5f, 0, 0.001f);
         targetAngle = new Vector3();
         torque = Vector3.zero;
 
@@ -64,8 +74,34 @@ public class FishController : MonoBehaviour
         reproduceTimer = Time.time - Random.Range(0, 30);
         reproduceDelay = 90f * Random.Range(0.9f, 1.1f);
 
+        foodItem = new FoodItem();
+    }
 
+    public void SetStats(float s, float h, Color color) {
+        size = s;
+        sizeSqr = Mathf.Pow(size, 2);
+        transform.localScale *= size;
+        float sizeMod = 0.5f+(size*0.5f);
+
+        // Movement
+        standoff = 0.5f + size*0.5f;
+        speed *= sizeMod;
+        maxSpeed *= sizeMod;
+        maxTurn /= sizeMod;
+        //yawCoefficient *= sizeMod;
+
+        // Food
+        sightDistance = Mathf.RoundToInt(sightDistance*sizeMod);
+        herbivorousness = h;
+        maxFood *= Mathf.Pow(size, 1.2f);
         food = maxFood/2;
+
+        // Reproduction
+        reproduceDelay *= sizeMod;
+
+        // Coloration
+        scaleColor = color;
+        transform.gameObject.GetComponent<MeshRenderer>().material.color = color;
     }
 
     void Update() {
@@ -77,34 +113,32 @@ public class FishController : MonoBehaviour
         // Gravity above water
         if (transform.position.y > 0) {
             rb.AddForce(Vector3.up*-10);
-            if (behavior == Behavior.eat) {
-                //rb.AddForce(Vector3.Normalize(transform.right)*-20);
-            }
         }
 
         // Brain ticks at 5 times per second 
         if (tick == 10) {
             // Manage Behavior changes
             // * These do need to happen before decisions are made
-            if (behavior == Behavior.idle && food < maxFood*0.8f) {
+            if (behavior == Behavior.idle && food < maxFood*0.75f) {
                 Retarget();
             }
-            if (behavior == Behavior.eat && foodItem == null) {
+            if (behavior == Behavior.eat && foodItem.plant == null) {
+                Retarget();
+            }
+            if (behavior == Behavior.predate && foodItem.fish == null) {
                 Retarget();
             }
 
             // Go eat that thang!
-            if (behavior == Behavior.eat) {
-                targetPosition = foodItem.transform.position;
+            if (behavior == Behavior.eat || behavior == Behavior.predate) {
+                if (behavior == Behavior.eat) {
+                    targetPosition = foodItem.plant.transform.position;
+                    //targetPosition.y -= 0.2f;
+                } else {
+                    targetPosition = foodItem.fish.transform.position;
+                }
 
                 Vector3 targetVec = targetPosition - transform.position;
-
-                // Swimmy swimmy
-                if (rb.velocity.magnitude < 4 && targetVec.magnitude > standoff) {
-                    rb.AddForce(Vector3.Normalize(transform.right)*40);
-                } else if (targetVec.magnitude < standoff * 0.75f) {
-                    rb.AddForce(Vector3.Normalize(transform.right)*-50);
-                }
 
                   // --------------------- //
                  // -- Roll Correction -- //
@@ -116,13 +150,13 @@ public class FishController : MonoBehaviour
                   // ------------------- //
                  // -- Yaw Targeting -- //
                 // -- ---------------- //
-                float targetY = -Mathf.Atan2(targetVec.z, targetVec.x) * Mathf.Rad2Deg; // Negative to actick for top-down perspective
+                float targetY = -Mathf.Atan2(targetVec.z, targetVec.x) * Mathf.Rad2Deg;
                 targetAngle.y = targetY;
                 float currentY = transform.rotation.eulerAngles.y;
                 float deltaY = Mathf.DeltaAngle(currentY, targetY);
                 //angleCorrection.y = angleController.Output(deltaY, Time.fixedDeltaTime);
                 //angVelCorrection.y = angVelController.Output(-rb.angularVelocity.y, Time.fixedDeltaTime); 
-                angleCorrection.y = deltaY * yawCoefficient;
+                angleCorrection.y = Mathf.Clamp(deltaY * yawCoefficient, -maxTurn, maxTurn);
 
                   // --------------------- //
                  // -- Pitch Targeting -- //
@@ -130,6 +164,7 @@ public class FishController : MonoBehaviour
                 // Note that positional deltaX & Z are used to calculate the
                 // desired rotation on the Z-axis by the diagonal across an angled square
                 float targetZ = Mathf.Atan2(targetVec.y, Mathf.Sqrt(Mathf.Pow(targetVec.x, 2)+Mathf.Pow(targetVec.z, 2)))*Mathf.Rad2Deg;
+                if (behavior == Behavior.eat) { targetZ -= 5; } // Eat Algae from below
                 float currentZ = transform.rotation.eulerAngles.z;
                 float deltaZ = Mathf.DeltaAngle(currentZ, targetZ);
                 //angleCorrection.z = angleController.Output(deltaZ, Time.fixedDeltaTime);
@@ -148,39 +183,50 @@ public class FishController : MonoBehaviour
                 s += "Torque: "+angleCorrection+"\n";
                 //Debug.Log(s);
 
+                // Swimmy swimmy
+                if (rb.velocity.magnitude < maxSpeed && targetVec.magnitude > standoff && Mathf.Abs(deltaY) < 90) {
+                    rb.AddForce(Vector3.Normalize(transform.right)*speed);
+                } else if (targetVec.magnitude < standoff * 0.75f) {
+                    rb.AddForce(Vector3.Normalize(transform.right)*-1.5f*speed);
+                }
+
                   // ---------- //
                  // -- food -- //
                 // ---------- //
-                if (behavior == Behavior.eat && Vector3.Distance(transform.position, targetPosition) <= standoff) {
-                    if (foodItem.Eaten()) { foodItem = null; }
-                    Eat();
+                if (Vector3.Distance(transform.position, targetPosition) <= standoff) {
+                    if (behavior == Behavior.eat) {
+                        Eat();
+                    } else if (behavior == Behavior.predate) {
+                        Bite();
+                    }
                 }
             // Wander idly
             } else if (behavior == Behavior.idle) {
                 // Swimmy swimmy
-                rb.AddForce(Vector3.Normalize(transform.right)*30);
+                rb.AddForce(Vector3.Normalize(transform.right)*speed*0.5f);
                 if (transform.position.y > 0) {
-                    rb.AddForce(Vector3.Normalize(transform.right)*-100);
+                    rb.AddForce(Vector3.Normalize(transform.right)*-5f*speed, ForceMode.Acceleration);
                 }
                 
                 // Yaw to wander side to side
                 // The yaw is lightly bound to allow for rapid changes
-                idleTorque.y += Random.Range(-1f, 1f) - idleTorque.y/8;
+                idleTorque.y += Random.Range(-sizeSqr, sizeSqr) - idleTorque.y/8;
+                idleTorque.y = Mathf.Clamp(idleTorque.y, -sizeSqr, sizeSqr);
 
                 // Slowly pitch to explore depth
                 // Pitch strongly tends towards zero
                 float deltaZ = Mathf.DeltaAngle(0, transform.eulerAngles.z);
                 if (deltaZ > 180) { deltaZ -= 360; }
-                idleTorque.z = Mathf.Clamp(idleTorque.z + Random.Range(-0.1f, 0.1f) - deltaZ/90f, -1f, 1f);
+                idleTorque.z = Mathf.Clamp(idleTorque.z + Random.Range(-sizeSqr, sizeSqr)*0.1f - (deltaZ/90f)*size, -size, size);
 
                 // Roll correction
-                idleTorque.x = angleController.Output(Mathf.DeltaAngle(axisX, 0), Time.fixedDeltaTime);
+                idleTorque.x = Mathf.DeltaAngle(axisX, 0) * rollCoefficient;
 
                 rb.AddRelativeTorque(idleTorque);
             }
 
             // Get Hungry
-            food--;
+            food -= size;
             if (food <= 0) {
                 Die();
             }
@@ -213,37 +259,85 @@ public class FishController : MonoBehaviour
 	}
 
     void Retarget() {
-        foodItem = null;
-        float bestDist = Mathf.Infinity;
-        foreach (Transform child in plants.transform) {
-            float dist = (transform.position - child.position).sqrMagnitude;
-            if (dist < bestDist && dist < sightDistance) {
-                bestDist = dist;
-                foodItem = child.gameObject.GetComponent<AlgaeController>();
-                targetPosition = child.position;
+        // Herbivores, and starving omnivores
+        if (herbivorousness > food/maxFood) { // Search for plant
+            foodItem.plant = null;
+            float bestDist = Mathf.Infinity;
+            foreach (Transform child in plants.transform) {
+                float dist = (transform.position - child.position).sqrMagnitude;
+                if (dist < bestDist && dist < sightDistance) {
+                    bestDist = dist;
+                    foodItem.plant = child.gameObject.GetComponent<AlgaeController>();
+                    targetPosition = child.position;
+                }
             }
-        }
-        if (foodItem != null) {
-            Vector3 targetVec = foodItem.transform.position-transform.position;
-            if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
-                behavior = Behavior.eat;
+            if (foodItem.plant != null) {
+                Vector3 targetVec = foodItem.plant.transform.position-transform.position;
+                if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
+                    behavior = Behavior.eat;
+                }
+            } else {
+                Idle();
             }
-        } else {
-            Idle();
+        } else { // search for fishie
+            foodItem.fish = null;
+            float bestDist = Mathf.Infinity;
+            foreach (Transform child in fishes.transform) {
+                FishController morsel = child.gameObject.GetComponent<FishController>();
+                // Only eat fish appreciably smaller than you
+                if (morsel.size > size * 0.8f) { continue; }
+                float dist = (transform.position - child.position).sqrMagnitude;
+                if (dist < bestDist && dist < sightDistance) {
+                    bestDist = dist;
+                    foodItem.fish = morsel;
+                    targetPosition = child.position;
+                }
+            }
+            if (foodItem.fish != null) {
+                Vector3 targetVec = foodItem.fish.transform.position-transform.position;
+                if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
+                    behavior = Behavior.predate;
+                }
+            } else {
+                Idle();
+            }
         }
     }
 
     void Eat() {
-        food += 5;
+        food += 4 * size;
+        if (foodItem.plant.Eaten(size)) { foodItem.plant = null; }
         if (food > maxFood) {
-            food = maxFood;
             Idle();
             idleTorque.y = Random.Range(-2, 2);
-            rb.AddForce(Vector3.Normalize(transform.right)*-100, ForceMode.Acceleration);
+            rb.AddForce(Vector3.Normalize(transform.right)*-2.5f*speed, ForceMode.Acceleration);
             if (Time.time - reproduceTimer > reproduceDelay) {
                 Reproduce();
             }
         }
+    }
+
+    void Bite() {
+        if (foodItem.fish.Bitten(size*10)) {
+            food += foodItem.fish.size * 400;
+            if (food > maxFood) {
+                Idle();
+                idleTorque.y = Random.Range(-2, 2);
+                rb.AddForce(Vector3.Normalize(transform.right)*-2.5f*speed, ForceMode.Acceleration);
+                if (Time.time - reproduceTimer > reproduceDelay) {
+                    Reproduce();
+                }
+            }
+        }
+    }
+
+    public bool Bitten(float dmg) {
+        health -= dmg;
+        if (health <= 0) {
+            Die();
+            return true;
+        }
+        return false;
     }
 
     void Idle() {
@@ -263,6 +357,7 @@ public class FishController : MonoBehaviour
         clone.name = clone.name.Split('(')[0];
         food = maxFood/2;
         reproduceTimer = Time.time;
+        clone.GetComponent<FishController>().SetStats(size, herbivorousness, scaleColor);
     }
 
     void Die() {

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 40,
+    static int seedPlants = 100,
                seedFish = 10;
     static Vector3 spawnCenter = new Vector3(-320, 5, 370),
                    spawnRange = new Vector3(60, 0, 70);
@@ -34,6 +34,9 @@ public class Initializer : MonoBehaviour
             for (int i=0; i < seedFish; i++) {
                 SpawnFish();
             }
+
+            // Spooky fishie
+            SpawnOmnivore();
         }
 
         Time.timeScale = 1f;
@@ -91,5 +94,16 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             fishes.transform);
         clone.name = clone.name.Split('(')[0];
+        clone.GetComponent<FishController>().SetStats(1f, 1, Color.white);//Random.Range(0.1f, 2f), 1);
+    }
+
+    void SpawnOmnivore() {
+        GameObject clone = Instantiate(
+            fish,
+            FindWater(),
+            Quaternion.identity,
+            fishes.transform);
+        clone.name = clone.name.Split('(')[0];
+        clone.GetComponent<FishController>().SetStats(2f, 0.2f, Color.black);
     }
 }

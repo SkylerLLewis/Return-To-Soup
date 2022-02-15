@@ -11,7 +11,7 @@ public class AlgaeController : MonoBehaviour
     float reproduceTimer;
     public int reproduceCount;
     float growTime;
-    public int health;
+    public float health;
     float diameter = 0.75f;
     public bool adult;
 
@@ -25,7 +25,7 @@ public class AlgaeController : MonoBehaviour
         //reproduceCount = Random.Range(0, reproduceThreshold);
         reproduceTimer = 20f;
         growTime = 90f;
-        health = 50;
+        health = 40;
         
         adult = false;
 
@@ -143,8 +143,8 @@ public class AlgaeController : MonoBehaviour
         }*/
     }
 
-    public bool Eaten() {
-        health--;
+    public bool Eaten(float dmg) {
+        health -= dmg;
         if (health <= 0) {
             Die();
             return true;
