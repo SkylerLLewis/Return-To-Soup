@@ -4,12 +4,14 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 100,
-               seedFish = 10;
-    static Vector3 spawnCenter = new Vector3(-320, 5, 370),
-                   spawnRange = new Vector3(60, 0, 70);
+    static int seedPlants = 400,
+               seedFish = 40,
+               seedOmnivores = 2;
+    // Spawn Rang: X {-250, -400}, Z {300, 440}
+    static Vector3 spawnCenter = new Vector3(-325, 5, 370),
+                   spawnRange = new Vector3(75, 0, 70);
     GameObject staticPlants, plants, fishes, plant, fish;
-    int regenCounter = 0, regenThreshold = 500;
+    //int regenCounter = 0, regenThreshold = 500;
     public bool deadMode;
 
     void Start() {
@@ -36,17 +38,15 @@ public class Initializer : MonoBehaviour
             }
 
             // Spooky fishie
-            SpawnOmnivore();
+            for (int i=0; i < seedOmnivores; i++) {
+                SpawnOmnivore();
+            }
         }
 
         Time.timeScale = 1f;
     }
 
-    void Update() {
-        
-    }
-
-    void FixedUpdate() {
+    /*void FixedUpdate() {
         if (!deadMode) {
             regenCounter++;
             if (regenCounter >= regenThreshold) {
@@ -54,7 +54,7 @@ public class Initializer : MonoBehaviour
                 regenCounter = 0;
             }
         }
-    }
+    }*/
 
     void Regrowth() {
         //SpawnAlgae();
@@ -104,6 +104,6 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             fishes.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<FishController>().SetStats(2f, 0.2f, Color.black);
+        clone.GetComponent<FishController>().SetStats(2f, 0.5f, Color.black);
     }
 }

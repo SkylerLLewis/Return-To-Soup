@@ -25,42 +25,11 @@ public class AlgaeController : MonoBehaviour
         //reproduceCount = Random.Range(0, reproduceThreshold);
         reproduceTimer = 20f;
         growTime = 90f;
-        health = 40;
+        health = 10;
         
         adult = false;
 
         Invoke("Grow", Random.Range(0.8f,1.2f)*growTime);
-    }
-
-    void Start() {
-    }
-
-    void Update() {
-        
-    }
-
-    private void FixedUpdate() {
-        // Flotation
-        /*if (transform.position.y <= 0) {
-            rb.AddForce(Vector3.up*10);//, ForceMode.Acceleration);
-        } else if (transform.position.y < 0.1f) {
-            rb.AddForce(new Vector3(0, -100*(transform.position.y-0.1f), 0));
-        }*/
-
-        /*if (tick == 10) {
-            if (transform.position.y > 0.3f) {
-                Eaten();
-            }
-            if (reproduceCount >= reproduceThreshold) {
-                if (Random.Range(0,4) < 1 && transform.position.y < 0.3f){// && transform.position.y > 0) {
-                    Reproduce();
-                }
-                reproduceCount = 0;
-            }
-            reproduceCount++;
-            tick = 0;
-        }
-        tick++;*/
     }
 
     public void Grow() {

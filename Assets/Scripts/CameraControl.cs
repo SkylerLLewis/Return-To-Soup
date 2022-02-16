@@ -9,7 +9,7 @@ public class CameraControl : MonoBehaviour
     public Rigidbody body;
     public CharacterController character;
     
-    TextMeshProUGUI plantCount, fishCount;
+    TextMeshProUGUI plantCount, herbCount, omniCount;
     GameObject plants, fishes;
     Vector2 mouse;
     float sensitvity = 10,
@@ -34,7 +34,8 @@ public class CameraControl : MonoBehaviour
         fishes = GameObject.Find("Fishes");
 
         plantCount = GameObject.Find("Plant Count").GetComponent<TextMeshProUGUI>();
-        fishCount = GameObject.Find("Fish Count").GetComponent<TextMeshProUGUI>();
+        herbCount = GameObject.Find("Herbivore Count").GetComponent<TextMeshProUGUI>();
+        omniCount = GameObject.Find("Omnivore Count").GetComponent<TextMeshProUGUI>();
 
         InvokeRepeating("UpdateCounts", 0f, 5f);
     }
@@ -110,6 +111,15 @@ public class CameraControl : MonoBehaviour
 
     void UpdateCounts() {
         plantCount.text = plants.transform.childCount.ToString();
-        fishCount.text = fishes.transform.childCount.ToString();
+        int herb = 0, omni = 0;
+        foreach (Transform child in fishes.transform) {
+            if (child.GetComponent<FishController>().herbivorousness == 1) {
+                herb++;
+            } else {
+                omni++;
+            }
+        }
+        herbCount.text = herb.ToString();
+        omniCount.text = omni.ToString();
     }
 }
