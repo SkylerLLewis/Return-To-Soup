@@ -3,17 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using PIDtools;
 using util;
+using TMPro;
 
 public class FishController : MonoBehaviour
 {
     Rigidbody rb;
     GameObject plants, fishes, baby, eggs;
+    TextMeshProUGUI panelTitle, panelLabels, panelValues;
     public Vector3 targetPosition;
     int tick, lifespan;
     float maxFood;
     public float reproduceTimer;
     float reproduceDelay;
-    public float food, health;
+    public float food, health, maxHealth;
     float standoff = 1f;
     public Vector3 idleTorque;
 
@@ -50,13 +52,16 @@ public class FishController : MonoBehaviour
     FoodItem foodItem;
 
     void Awake() {
-        tick = Random.Range(0, 9);
+        gameObject.layer = 7; // Fish
 
+        // References
         rb = gameObject.GetComponent<Rigidbody>();
         plants = GameObject.Find("Plants");
         fishes = GameObject.Find("Fishes");
         eggs = GameObject.Find("Eggs");
-        behavior = Behavior.idle;
+        panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
+        panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
+        panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
         
         // Prefabs
         baby = Resources.Load("Prefabs/Egg") as GameObject;
@@ -66,6 +71,7 @@ public class FishController : MonoBehaviour
         speed = 100; // Newtons per 0.2sec
         maxTurn = 8; // Newton meters per 0.2sec
         maxFood = 300;
+        maxHealth = 10;
 
         Retarget();
 
@@ -74,6 +80,7 @@ public class FishController : MonoBehaviour
 
         idleTorque = Vector3.zero;
 
+        behavior = Behavior.idle;
         reproduceTimer = Time.time - Random.Range(0, 30);
         reproduceDelay = 90f * Random.Range(0.9f, 1.1f);
 
@@ -110,6 +117,10 @@ public class FishController : MonoBehaviour
         // Age
         lifespan = Mathf.RoundToInt(300 * size);
         Invoke("Die", lifespan);
+
+        // Health
+        maxHealth *= size;
+        health = maxHealth;
 
         // Live
         // Act every 0.5 sec
@@ -148,7 +159,6 @@ public class FishController : MonoBehaviour
                 targetPosition = foodItem.plant.transform.position;
             } else if (behavior == Behavior.predate) {
                 //if (foodItem.fish == null) { return; }
-                Debug.Log("I am predating");
                 targetPosition = foodItem.fish.transform.position;
             }
 
@@ -219,7 +229,8 @@ public class FishController : MonoBehaviour
             // Swimmy swimmy
             rb.AddForce(Vector3.Normalize(transform.right)*speed*0.5f);
             if (transform.position.y > 0) {
-                rb.AddForce(Vector3.Normalize(transform.right)*-5f*speed, ForceMode.Acceleration);
+                //rb.AddForce(Vector3.Normalize(transform.right)*-5f*speed, ForceMode.Acceleration);
+                //rb.AddRelativeTorque(new Vector3(0, 1, 1) *5*speed);
             }
             
             // Yaw to wander side to side
@@ -243,6 +254,12 @@ public class FishController : MonoBehaviour
         food -= size*2;
         if (food <= 0) {
             Die();
+        }
+    }
+
+    void OnCollisionEnter(Collision collision) {
+        if (collision.gameObject.layer == 3) {
+            rb.AddForce(Vector3.Normalize(transform.right)*-speed, ForceMode.Acceleration);
         }
     }
 
@@ -274,8 +291,8 @@ public class FishController : MonoBehaviour
                 // Only eat fish appreciably smaller than you
                 if (morsel.size > size * 0.8f) { continue; }
                 float dist = (transform.position - child.position).sqrMagnitude;
-                if (dist < bestDist && dist < sightDistance) {
-                    bestDist = dist;
+                if (dist < bestDist/morsel.size && dist < sightDistance) {
+                    bestDist = dist/morsel.size;
                     foodItem.fish = morsel;
                     targetPosition = child.position;
                 }
@@ -365,9 +382,8 @@ public class FishController : MonoBehaviour
     void Reproduce() {
         // Evolve new stats
         float newSize = size;
-        if (Random.Range(0,100) < 10) { // 10% chance of mutation
+        if (Random.Range(0,100) < 100) { // 100% chance of mutation
             newSize *= Random.Range(0.90f, 1.10f); // max 10% variance
-            Debug.Log("SIZE MUTATION: "+newSize);
         }
         food -= maxFood/2;
         reproduceTimer = Time.time;
@@ -386,5 +402,21 @@ public class FishController : MonoBehaviour
 
     void Die() {
         Destroy(transform.gameObject);
+    }
+
+    public void DisplayStats() {
+        string labels="", values="";
+        if (herbivorousness == 1) {
+            panelTitle.text = "Herbivore";
+        } else if (herbivorousness > 0) {
+            panelTitle.text = "Omnivore";
+        } else {
+            panelTitle.text = "Carnivore";
+        }
+        labels += "Size:\n"; values += (Mathf.RoundToInt(size*100)/100f).ToString()+"\n";
+        labels += "HP:\n"; values += Mathf.RoundToInt(100*health/maxHealth)+"%\n";
+        labels += "Food:\n"; values += Mathf.RoundToInt(100*food/maxFood)+"%\n";
+        panelLabels.text = labels;
+        panelValues.text = values;
     }
 }

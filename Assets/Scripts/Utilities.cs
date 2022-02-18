@@ -16,5 +16,14 @@ namespace util {
             l.endColor = color;
         }
 
+        public static void Highlight(GameObject target, Color color) {
+            Outline outline = target.AddComponent<Outline>();
+            outline.OutlineColor = Color.yellow;
+        }
+
+        public static void UnHighlight(GameObject target) {
+            GameObject.Destroy(target.GetComponent<Outline>());
+        }
+
     }
 }

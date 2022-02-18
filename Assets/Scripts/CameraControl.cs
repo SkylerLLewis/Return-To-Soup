@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using util;
 
 public class CameraControl : MonoBehaviour
 {
@@ -9,8 +10,10 @@ public class CameraControl : MonoBehaviour
     public Rigidbody body;
     public CharacterController character;
     
-    TextMeshProUGUI plantCount, herbCount, omniCount;
-    GameObject plants, fishes;
+    TextMeshProUGUI plantCount, herbCount, omniCount, carnCount;
+    GameObject plants, fishes, infoPanel, highlightTarget, crosshair;
+    bool infoPanelActive = false;
+    Vector3 infoPos;
     Vector2 mouse;
     float sensitvity = 10,
         moveSpeed = 0.4f,
@@ -32,12 +35,19 @@ public class CameraControl : MonoBehaviour
         
         plants = GameObject.Find("Plants");
         fishes = GameObject.Find("Fishes");
+        infoPanel = GameObject.Find("Info Panel");
+        infoPos = infoPanel.transform.position;
+        infoPos.x += 500;
+        infoPanel.transform.position = infoPos;
+        crosshair = GameObject.Find("Crosshair");
 
         plantCount = GameObject.Find("Plant Count").GetComponent<TextMeshProUGUI>();
         herbCount = GameObject.Find("Herbivore Count").GetComponent<TextMeshProUGUI>();
         omniCount = GameObject.Find("Omnivore Count").GetComponent<TextMeshProUGUI>();
+        carnCount = GameObject.Find("Carnivore Count").GetComponent<TextMeshProUGUI>();
 
         InvokeRepeating("UpdateCounts", 0f, 5f);
+        InvokeRepeating("UpdateInfo", 0f, 1f);
     }
 
     // Update is called once per frame
@@ -97,29 +107,84 @@ public class CameraControl : MonoBehaviour
                 escaped = true;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
+                crosshair.SetActive(false);
             } else {
                 escaped = false;
-                Cursor.visible = false;
                 Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                crosshair.SetActive(true);
             }
             escapePressed = true;
         }
         if (escapePressed && !Input.GetKeyDown(KeyCode.Escape)) {
             escapePressed = false;
         }
+
+        // Select Thing
+        if (Input.GetMouseButtonDown(0) && !escaped) {
+            RaycastHit hit;
+            float deltaY = Mathf.DeltaAngle(transform.localEulerAngles.y, 0);
+            float deltaX = Mathf.DeltaAngle(player.transform.localEulerAngles.x, 0);
+            Vector3 angle = new Vector3(transform.eulerAngles.x, player.transform.eulerAngles.y);
+            Vector3 direction = Quaternion.Euler(angle) * Vector3.forward;
+            Debug.Log("Angle: "+angle+" | Direction: "+direction);
+            if (Physics.SphereCast(player.transform.position, 0.2f, direction, out hit, Mathf.Infinity, LayerMask.GetMask("Plants", "Fish", "Statics"))) {
+                Debug.Log("Hit at "+hit.point+" at a dist of "+hit.distance);
+                if (!infoPanelActive) {
+                    infoPanelActive = true;
+                    infoPos.x -= 500;
+                    infoPanel.transform.position = infoPos;
+                } else if (highlightTarget != null) {
+                    Utilities.UnHighlight(highlightTarget);
+                    highlightTarget = null;
+                }
+                highlightTarget = hit.transform.gameObject;
+                Utilities.Highlight(highlightTarget, Color.yellow);
+                highlightTarget.SendMessage("DisplayStats");
+            } else {
+                Debug.Log("No hit.");
+                if (infoPanelActive) {
+                    Utilities.UnHighlight(highlightTarget);
+                    highlightTarget = null;
+                    infoPanelActive = false;
+                    infoPos.x += 500;
+                    infoPanel.transform.position = infoPos;
+                }
+            }
+        }
+
+        // Right click to dismiss info
+        if (Input.GetMouseButtonDown(1) && !escaped) {
+            if (infoPanelActive) {
+                Utilities.UnHighlight(highlightTarget);
+                highlightTarget = null;
+                infoPanelActive = false;
+                infoPos.x += 500;
+                infoPanel.transform.position = infoPos;
+            }
+        }
     }
 
     void UpdateCounts() {
         plantCount.text = plants.transform.childCount.ToString();
-        int herb = 0, omni = 0;
+        int herb = 0, omni = 0, carn = 0;
         foreach (Transform child in fishes.transform) {
             if (child.GetComponent<FishController>().herbivorousness == 1) {
                 herb++;
-            } else {
+            } else if (child.GetComponent<FishController>().herbivorousness > 0) {
                 omni++;
+            } else {
+                carn++;
             }
         }
         herbCount.text = herb.ToString();
         omniCount.text = omni.ToString();
+        carnCount.text = carn.ToString();
+    }
+
+    void UpdateInfo() {
+        if (highlightTarget != null) {
+            highlightTarget.SendMessage("DisplayStats");
+        }
     }
 }

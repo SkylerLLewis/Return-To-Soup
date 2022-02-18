@@ -2,30 +2,48 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using util;
+using TMPro;
 
 public class AlgaeController : MonoBehaviour
 {
     Rigidbody rb;
-    GameObject baby, plants, staticPlants;
+    GameObject baby, plants, staticPlants, xSprite, ySprite;
+    TextMeshProUGUI panelTitle, panelLabels, panelValues;
     //int tick, reproduceThreshold = 100;
     float reproduceTimer;
     public int reproduceCount;
     float growTime;
-    public float health;
-    float diameter = 0.75f;
+    public float health, maxHealth;
+    float diameter = 1.1f;
     public bool adult;
 
     void Awake() {
+        gameObject.layer = 8; // Statics
+
         rb = gameObject.GetComponent<Rigidbody>();
         baby = Resources.Load("Prefabs/Algae") as GameObject;
         plants = GameObject.Find("Plants");
         staticPlants = GameObject.Find("Static Plants");
+        panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
+        panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
+        panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+
+        foreach (Transform child in transform) {
+            if (child.name == "xSprite") {
+                xSprite = child.gameObject;
+            } else if (child.name == "ySprite") {
+                ySprite = child.gameObject;
+            }
+        }
+        xSprite.SetActive(false);
+        ySprite.SetActive(false);
 
         //tick = Random.Range(0, 9);
         //reproduceCount = Random.Range(0, reproduceThreshold);
         reproduceTimer = 20f;
         growTime = 90f;
-        health = 10;
+        maxHealth = 10;
+        health = maxHealth;
         
         adult = false;
 
@@ -34,17 +52,32 @@ public class AlgaeController : MonoBehaviour
 
     public void Grow() {
         if (!adult) {
+            gameObject.layer = 6; // Plants
             adult = true;
-            transform.localScale *= 2f;
-            transform.gameObject.GetComponent<SphereCollider>().radius = 0.5f;
+            //transform.localScale *= 2f;
+            //transform.gameObject.GetComponent<SphereCollider>().radius = 0.5f;
             transform.SetParent(plants.transform, true);
+            xSprite.SetActive(true);
+            ySprite.SetActive(true);
+            
+            /*GameObject xSprite = new GameObject("xSprite", typeof(SpriteRenderer));
+            Vector3 pos = transform.position;
+            pos.y -= 0.5f;
+            xSprite.transform.position = pos;
+            xSprite.transform.SetParent(transform, true);
+            xSprite.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Algae Below");
+            GameObject ySprite = new GameObject("ySprite", typeof(SpriteRenderer));
+            pos = transform.position;
+            pos.y -= 0.5f;
+            ySprite.transform.position = pos;
+            ySprite.transform.eulerAngles = new Vector3(0, 90, 0);
+            ySprite.transform.SetParent(transform, true);
+            ySprite.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Algae Below");*/
             InvokeRepeating("Reproduce", Random.Range(0f, reproduceTimer), reproduceTimer);
         }
     }
 
     void Reproduce() {
-        // only a 1 in four chance of bebe
-        //if (Random.Range(0,4) > 0){ return; }
         Vector3 pos = FindSpot();
         if (pos == Vector3.zero) { return; } // no room
         GameObject clone = Instantiate(
@@ -58,7 +91,7 @@ public class AlgaeController : MonoBehaviour
     // This funciton now only tries once, keeping code there for future possibilities
     Vector3 FindSpot() {
         // Standard, spread outwards
-        if (Random.Range(0,40) > 0) {
+        if (Random.Range(0,50) > 0) {
             Vector3 direction = Vector3.zero;
             float angle = Random.Range(0f, 2f) * Mathf.PI;
             direction.x = diameter*Mathf.Cos(angle);
@@ -123,6 +156,18 @@ public class AlgaeController : MonoBehaviour
 
     void Die() {
         Destroy(transform.gameObject);
+    }
+
+    public void DisplayStats() {
+        string labels="", values="";
+        if (!adult) {
+            panelTitle.text = "Algae Spores";
+        } else {
+            panelTitle.text = "Algae";
+        }
+        labels += "HP:\n"; values += Mathf.RoundToInt(100*health/maxHealth)+"%\n";
+        panelLabels.text = labels;
+        panelValues.text = values;
     }
 }
 

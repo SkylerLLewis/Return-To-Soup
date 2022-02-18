@@ -18,7 +18,7 @@ public class UIController : MonoBehaviour
     }
 
     public void SpeedUp() {
-        if (Time.timeScale < 8f) {
+        if (Time.timeScale < 16f) {
             Time.timeScale *= 2;
         }
         timeSpeed.text = Time.timeScale+"x";

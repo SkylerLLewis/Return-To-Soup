@@ -4,9 +4,10 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 400,
+    static int seedPlants = 200,
                seedFish = 40,
-               seedOmnivores = 2;
+               seedOmnivores = 0,
+               seedCarnivores = 1;
     // Spawn Rang: X {-250, -400}, Z {300, 440}
     static Vector3 spawnCenter = new Vector3(-325, 5, 370),
                    spawnRange = new Vector3(75, 0, 70);
@@ -40,6 +41,11 @@ public class Initializer : MonoBehaviour
             // Spooky fishie
             for (int i=0; i < seedOmnivores; i++) {
                 SpawnOmnivore();
+            }
+
+            // Spooky fishie
+            for (int i=0; i < seedCarnivores; i++) {
+                SpawnCarnivore();
             }
         }
 
@@ -103,7 +109,17 @@ public class Initializer : MonoBehaviour
             FindWater(),
             Quaternion.identity,
             fishes.transform);
-        clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<FishController>().SetStats(2f, 0.5f, Color.black);
+        clone.name = "Omnivore";
+        clone.GetComponent<FishController>().SetStats(1.5f, 0.5f, Color.black);
+    }
+
+    void SpawnCarnivore() {
+        GameObject clone = Instantiate(
+            fish,
+            FindWater(),
+            Quaternion.identity,
+            fishes.transform);
+        clone.name = "Omnivore";
+        clone.GetComponent<FishController>().SetStats(4f, 0, Color.blue);
     }
 }
