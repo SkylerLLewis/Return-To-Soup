@@ -129,18 +129,20 @@ public class CameraControl : MonoBehaviour
             Vector3 direction = Quaternion.Euler(angle) * Vector3.forward;
             Debug.Log("Angle: "+angle+" | Direction: "+direction);
             if (Physics.SphereCast(player.transform.position, 0.2f, direction, out hit, Mathf.Infinity, LayerMask.GetMask("Plants", "Fish", "Statics"))) {
-                Debug.Log("Hit at "+hit.point+" at a dist of "+hit.distance);
-                if (!infoPanelActive) {
-                    infoPanelActive = true;
-                    infoPos.x -= 500;
-                    infoPanel.transform.position = infoPos;
-                } else if (highlightTarget != null) {
-                    Utilities.UnHighlight(highlightTarget);
-                    highlightTarget = null;
+                if (highlightTarget != hit.transform.gameObject) {
+                    Debug.Log("Hit at "+hit.point+" at a dist of "+hit.distance);
+                    if (!infoPanelActive) {
+                        infoPanelActive = true;
+                        infoPos.x -= 500;
+                        infoPanel.transform.position = infoPos;
+                    } else if (highlightTarget != null) {
+                        Utilities.UnHighlight(highlightTarget);
+                        highlightTarget = null;
+                    }
+                    highlightTarget = hit.transform.gameObject;
+                    Utilities.Highlight(highlightTarget, Color.yellow);
+                    highlightTarget.SendMessage("DisplayStats");
                 }
-                highlightTarget = hit.transform.gameObject;
-                Utilities.Highlight(highlightTarget, Color.yellow);
-                highlightTarget.SendMessage("DisplayStats");
             } else {
                 Debug.Log("No hit.");
                 if (infoPanelActive) {
@@ -156,8 +158,10 @@ public class CameraControl : MonoBehaviour
         // Right click to dismiss info
         if (Input.GetMouseButtonDown(1) && !escaped) {
             if (infoPanelActive) {
-                Utilities.UnHighlight(highlightTarget);
-                highlightTarget = null;
+                if (highlightTarget != null) {
+                    Utilities.UnHighlight(highlightTarget);
+                    highlightTarget = null;
+                }
                 infoPanelActive = false;
                 infoPos.x += 500;
                 infoPanel.transform.position = infoPos;

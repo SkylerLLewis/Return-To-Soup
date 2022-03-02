@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 200,
-               seedFish = 40,
+    static int seedPlants = 1000,
+               seedFish = 100,
                seedOmnivores = 0,
                seedCarnivores = 1;
     // Spawn Rang: X {-250, -400}, Z {300, 440}
@@ -78,7 +78,7 @@ public class Initializer : MonoBehaviour
                 pos = spawnCenter;
                 break;
             }
-        } while (Physics.Raycast(new Vector3(pos.x, 20, pos.z), -Vector3.up, 20));
+        } while (Physics.Raycast(new Vector3(pos.x, 50, pos.z), -Vector3.up, 50));
         //TraceLine(new Vector3(pos.x, 20, pos.z), pos, Color.green);
         return pos;
     }

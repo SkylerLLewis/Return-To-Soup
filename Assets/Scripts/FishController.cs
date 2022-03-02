@@ -12,6 +12,7 @@ public class FishController : MonoBehaviour
     TextMeshProUGUI panelTitle, panelLabels, panelValues;
     public Vector3 targetPosition;
     int tick, lifespan;
+    float birth;
     float maxFood;
     public float reproduceTimer;
     float reproduceDelay;
@@ -82,7 +83,8 @@ public class FishController : MonoBehaviour
 
         behavior = Behavior.idle;
         reproduceTimer = Time.time - Random.Range(0, 30);
-        reproduceDelay = 90f * Random.Range(0.9f, 1.1f);
+        reproduceDelay = 60f * Random.Range(0.9f, 1.1f);
+        birth = Time.time;
 
         foodItem = new FoodItem();
     }
@@ -108,7 +110,7 @@ public class FishController : MonoBehaviour
         food = maxFood/2;
 
         // Reproduction
-        reproduceDelay *= sizeMod;
+        reproduceDelay *= Mathf.Pow(size,2);
 
         // Coloration
         scaleColor = color;
@@ -124,7 +126,7 @@ public class FishController : MonoBehaviour
 
         // Live
         // Act every 0.5 sec
-        InvokeRepeating("Move", 0.5f, 0.5f);
+        InvokeRepeating("Move", Random.Range(0.5f,1f), 0.5f);
     }
 
     private void FixedUpdate() {
@@ -284,7 +286,8 @@ public class FishController : MonoBehaviour
          if (herbivorousness < 1) { // search for fishie
             foodItem.fish = null;
             float bestDist = Mathf.Infinity;
-            foreach (Transform child in fishes.transform) {
+            // Dumb search over everything
+            /*foreach (Transform child in fishes.transform) {
                 FishController morsel = child.gameObject.GetComponent<FishController>();
                 // Can't eat yoself
                 if (morsel == this) { continue; }
@@ -296,7 +299,26 @@ public class FishController : MonoBehaviour
                     foodItem.fish = morsel;
                     targetPosition = child.position;
                 }
+            }*/
+            // Collider based search
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Fish"));
+            if (hitColliders.Length != 0) {
+                foreach (Collider hit in hitColliders) {
+                    FishController morsel = hit.gameObject.GetComponent<FishController>();
+                    // Can't eat yoself
+                    if (morsel == this) { continue; }
+                    // Only eat fish appreciably smaller than you
+                    if (morsel.size > size * 0.8f) { continue; }
+                    float dist = (transform.position - hit.transform.position).sqrMagnitude;
+                    if (dist < bestDist/morsel.size) {
+                        bestDist = dist/morsel.size;
+                        foodItem.fish = morsel;
+                        targetPosition = hit.transform.position;
+                    }
+                }
             }
+
+            // Check if fish is visible
             if (foodItem.fish != null) {
                 Vector3 targetVec = foodItem.fish.transform.position-transform.position;
                 if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
@@ -314,14 +336,28 @@ public class FishController : MonoBehaviour
         if (Mathf.Min(food/maxFood, 1f) <= herbivorousness) { // Search for plant
             foodItem.plant = null;
             float bestDist = Mathf.Infinity;
-            foreach (Transform child in plants.transform) {
+            // Dumb search method
+            /*foreach (Transform child in plants.transform) {
                 float dist = (transform.position - child.position).sqrMagnitude;
                 if (dist < bestDist && dist < sightDistance) {
                     bestDist = dist;
                     foodItem.plant = child.gameObject.GetComponent<AlgaeController>();
                     targetPosition = child.position;
                 }
+            }*/
+            // Collider based search
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Plants"));
+            if (hitColliders.Length != 0) {
+                foreach (Collider hit in hitColliders) {
+                    float dist = (transform.position - hit.transform.position).sqrMagnitude;
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        foodItem.plant = hit.gameObject.GetComponent<AlgaeController>();
+                        targetPosition = hit.transform.position;
+                    }
+                }
             }
+
             if (foodItem.plant != null) {
                 Vector3 targetVec = foodItem.plant.transform.position-transform.position;
                 if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
@@ -385,6 +421,12 @@ public class FishController : MonoBehaviour
         if (Random.Range(0,100) < 100) { // 100% chance of mutation
             newSize *= Random.Range(0.90f, 1.10f); // max 10% variance
         }
+        Color newColor = scaleColor;
+        if (Random.Range(0,1000) <= 1) { // 0.1% of color mutation
+            newColor.r = Mathf.Clamp01(newColor.r + Random.Range(-0.5f, 0.5f));
+            newColor.g = Mathf.Clamp01(newColor.g + Random.Range(-0.5f, 0.5f));
+            newColor.b = Mathf.Clamp01(newColor.b + Random.Range(-0.5f, 0.5f));
+        }
         food -= maxFood/2;
         reproduceTimer = Time.time;
         RaycastHit hit;
@@ -397,7 +439,7 @@ public class FishController : MonoBehaviour
             Quaternion.identity,
             eggs.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<EggController>().SetStats(newSize, herbivorousness, scaleColor);
+        clone.GetComponent<EggController>().SetStats(newSize, herbivorousness, newColor);
     }
 
     void Die() {
@@ -416,6 +458,14 @@ public class FishController : MonoBehaviour
         labels += "Size:\n"; values += (Mathf.RoundToInt(size*100)/100f).ToString()+"\n";
         labels += "HP:\n"; values += Mathf.RoundToInt(100*health/maxHealth)+"%\n";
         labels += "Food:\n"; values += Mathf.RoundToInt(100*food/maxFood)+"%\n";
+        labels += "Egg:\n";
+        int timeToEgg = Mathf.RoundToInt(reproduceDelay - (Time.time - reproduceTimer));
+        if (timeToEgg > 0) {
+            values += timeToEgg+"s\n";
+        } else {
+            values += "0s\n";
+        }
+        labels += "Age:\n"; values += Mathf.RoundToInt(Time.time - birth)+"\n";
         panelLabels.text = labels;
         panelValues.text = values;
     }

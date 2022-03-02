@@ -40,9 +40,9 @@ public class AlgaeController : MonoBehaviour
 
         //tick = Random.Range(0, 9);
         //reproduceCount = Random.Range(0, reproduceThreshold);
-        reproduceTimer = 20f;
+        reproduceTimer = 25f;
         growTime = 90f;
-        maxHealth = 10;
+        maxHealth = 5;
         health = maxHealth;
         
         adult = false;
@@ -96,7 +96,8 @@ public class AlgaeController : MonoBehaviour
             float angle = Random.Range(0f, 2f) * Mathf.PI;
             direction.x = diameter*Mathf.Cos(angle);
             direction.z = diameter*Mathf.Sin(angle);
-            if (!Physics.CheckSphere(transform.position+direction, diameter*0.5f)) {
+            if (!Physics.CheckSphere(transform.position+direction, diameter*0.5f) &&
+                !Physics.Raycast(transform.position, direction, diameter*2f, LayerMask.GetMask("Terrain"))) {
                 return transform.position + direction;
             } else {
                 return Vector3.zero;
