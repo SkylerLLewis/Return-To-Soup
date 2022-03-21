@@ -43,12 +43,8 @@ public class FishController : MonoBehaviour
     }
 
     struct FoodItem {
-        public AlgaeController plant;
+        public LeafController plant;
         public FishController fish;
-
-        /*public FoodItem(Vector3 p, AlgaeController a, FishController f) {
-            position = p;
-        }*/
     }
     FoodItem foodItem;
 
@@ -283,7 +279,7 @@ public class FishController : MonoBehaviour
 
     // Brain of Fish, Decides where to go
     void Retarget() {
-         if (herbivorousness < 1) { // search for fishie
+        if (herbivorousness < 1) { // search for fishie
             foodItem.fish = null;
             float bestDist = Mathf.Infinity;
             // Dumb search over everything
@@ -352,7 +348,7 @@ public class FishController : MonoBehaviour
                     float dist = (transform.position - hit.transform.position).sqrMagnitude;
                     if (dist < bestDist) {
                         bestDist = dist;
-                        foodItem.plant = hit.gameObject.GetComponent<AlgaeController>();
+                        foodItem.plant = hit.gameObject.GetComponent<LeafController>();
                         targetPosition = hit.transform.position;
                     }
                 }

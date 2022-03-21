@@ -127,10 +127,8 @@ public class CameraControl : MonoBehaviour
             float deltaX = Mathf.DeltaAngle(player.transform.localEulerAngles.x, 0);
             Vector3 angle = new Vector3(transform.eulerAngles.x, player.transform.eulerAngles.y);
             Vector3 direction = Quaternion.Euler(angle) * Vector3.forward;
-            Debug.Log("Angle: "+angle+" | Direction: "+direction);
-            if (Physics.SphereCast(player.transform.position, 0.2f, direction, out hit, Mathf.Infinity, LayerMask.GetMask("Plants", "Fish", "Statics"))) {
+            if (Physics.SphereCast(player.transform.position, 0.2f, direction, out hit, Mathf.Infinity, LayerMask.GetMask("Plants", "Fish", "Statics", "Roots"))) {
                 if (highlightTarget != hit.transform.gameObject) {
-                    Debug.Log("Hit at "+hit.point+" at a dist of "+hit.distance);
                     if (!infoPanelActive) {
                         infoPanelActive = true;
                         infoPos.x -= 500;
@@ -144,7 +142,6 @@ public class CameraControl : MonoBehaviour
                     highlightTarget.SendMessage("DisplayStats");
                 }
             } else {
-                Debug.Log("No hit.");
                 if (infoPanelActive) {
                     Utilities.UnHighlight(highlightTarget);
                     highlightTarget = null;
@@ -170,7 +167,7 @@ public class CameraControl : MonoBehaviour
     }
 
     void UpdateCounts() {
-        plantCount.text = plants.transform.childCount.ToString();
+        plantCount.text = GameObject.FindGameObjectsWithTag("Plant").Length.ToString();
         int herb = 0, omni = 0, carn = 0;
         foreach (Transform child in fishes.transform) {
             if (child.GetComponent<FishController>().herbivorousness == 1) {

@@ -4,14 +4,14 @@ using UnityEngine;
 
 public class Initializer : MonoBehaviour
 {
-    static int seedPlants = 1000,
-               seedFish = 100,
+    static int seedPlants = 100,
+               seedFish = 10,
                seedOmnivores = 0,
-               seedCarnivores = 1;
+               seedCarnivores = 0;
     // Spawn Rang: X {-250, -400}, Z {300, 440}
     static Vector3 spawnCenter = new Vector3(-325, 5, 370),
                    spawnRange = new Vector3(75, 0, 70);
-    GameObject staticPlants, plants, fishes, plant, fish;
+    GameObject staticPlants, plants, fishes, plant, fish, roots;
     //int regenCounter = 0, regenThreshold = 500;
     public bool deadMode;
 
@@ -20,18 +20,19 @@ public class Initializer : MonoBehaviour
         QualitySettings.vSyncCount = 1;
         Application.targetFrameRate = 60;
         staticPlants = GameObject.Find("Static Plants");
+        roots = GameObject.Find("Roots");
         plants = GameObject.Find("Plants");
         fishes = GameObject.Find("Fishes");
 
         // Prefabs
-        plant = Resources.Load("Prefabs/Algae") as GameObject;
+        plant = Resources.Load("Prefabs/Root") as GameObject;
 
         fish = Resources.Load("Prefabs/Fish") as GameObject;
 
         if (!deadMode) {
             // Spawn Plants
             for (int i=0; i < seedPlants; i++) {
-                SpawnAlgae();
+                SpawnPlants();
             }
             // Spawn Fishies
             for (int i=0; i < seedFish; i++) {
@@ -83,6 +84,27 @@ public class Initializer : MonoBehaviour
         return pos;
     }
 
+    Vector3 FindUnderWater() {
+        Vector3 pos = Vector3.zero;
+        int sentinel = 0;
+        RaycastHit hit;
+        // Trash raycast to fill hit var
+        Physics.Raycast(Vector3.zero, -Vector3.up, out hit, 50);
+        hit.point = Vector3.zero;
+        do {
+            //if (sentinel > 0) { TraceLine(new Vector3(pos.x, 20, pos.z), pos, Color.red); }
+            pos.x = spawnCenter.x + Random.Range(-spawnRange.x, spawnRange.x);
+            pos.z = spawnCenter.z + Random.Range(-spawnRange.z, spawnRange.z);
+            sentinel++;
+            if (sentinel > 10) {
+                pos = spawnCenter;
+                break;
+            }
+        } while (!Physics.Raycast(new Vector3(pos.x, -1, pos.z), -Vector3.up, out hit, 50));
+        //TraceLine(new Vector3(pos.x, 20, pos.z), pos, Color.green);
+        return hit.point;
+    }
+
     void SpawnAlgae() {
         GameObject clone = Instantiate(
             plant,
@@ -91,6 +113,16 @@ public class Initializer : MonoBehaviour
             staticPlants.transform);
         clone.name = clone.name.Split('(')[0];
         clone.GetComponent<AlgaeController>().Grow();
+    }
+
+    void SpawnPlants() {
+        GameObject clone = Instantiate(
+            plant,
+            FindUnderWater(),
+            Quaternion.identity,
+            roots.transform);
+        clone.name = clone.name.Split('(')[0];
+        clone.GetComponent<PlantController>().Sprout();
     }
 
     void SpawnFish() {
