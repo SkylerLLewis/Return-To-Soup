@@ -122,7 +122,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().Sprout();
+        clone.GetComponent<PlantController>().SetStats(0, seeder:true);
     }
 
     void SpawnFish() {

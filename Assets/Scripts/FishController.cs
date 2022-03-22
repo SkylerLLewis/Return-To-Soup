@@ -34,11 +34,11 @@ public class FishController : MonoBehaviour
 
     public float size, sizeSqr, herbivorousness;
 
-    public float axisX {
-        get { return transform.rotation.eulerAngles.x; }
+    public float axisZ {
+        get { return transform.rotation.eulerAngles.z; }
         set {
             Vector3 v = transform.rotation.eulerAngles;
-            transform.rotation = Quaternion.Euler(value, v.y, v.z);
+            transform.rotation = Quaternion.Euler(v.x, v.y, value);
         }
     }
 
@@ -165,9 +165,7 @@ public class FishController : MonoBehaviour
             // --------------------- //
             // -- Roll Correction -- //
             // --------------------- //
-            //angleCorrection.x = angleController.Output(Mathf.DeltaAngle(axisX, 0), Time.fixedDeltaTime);
-            //angVelCorrection.x = angVelController.Output(-rb.angularVelocity.x, Time.fixedDeltaTime); 
-            angleCorrection.x = Mathf.DeltaAngle(axisX, 0) * rollCoefficient;
+            angleCorrection.z = Mathf.DeltaAngle(axisZ, 0) * rollCoefficient;
 
             // ------------------- //
             // -- Yaw Targeting -- //
@@ -176,29 +174,25 @@ public class FishController : MonoBehaviour
             targetAngle.y = targetY;
             float currentY = transform.rotation.eulerAngles.y;
             float deltaY = Mathf.DeltaAngle(currentY, targetY);
-            //angleCorrection.y = angleController.Output(deltaY, Time.fixedDeltaTime);
-            //angVelCorrection.y = angVelController.Output(-rb.angularVelocity.y, Time.fixedDeltaTime); 
             angleCorrection.y = Mathf.Clamp(deltaY * yawCoefficient, -maxTurn, maxTurn);
 
             // --------------------- //
             // -- Pitch Targeting -- //
             // -- ------------------ //
             // Note that positional deltaX & Z are used to calculate the
-            // desired rotation on the Z-axis by the diagonal across an angled square
-            float targetZ = Mathf.Atan2(targetVec.y, Mathf.Sqrt(Mathf.Pow(targetVec.x, 2)+Mathf.Pow(targetVec.z, 2)))*Mathf.Rad2Deg;
-            if (behavior == Behavior.eat) { targetZ -= 5; } // Eat Algae from below
-            float currentZ = transform.rotation.eulerAngles.z;
-            float deltaZ = Mathf.DeltaAngle(currentZ, targetZ);
-            //angleCorrection.z = angleController.Output(deltaZ, Time.fixedDeltaTime);
-            //angVelCorrection.z = angVelController.Output(-rb.angularVelocity.z, Time.fixedDeltaTime); 
-            angleCorrection.z = deltaZ * pitchCoefficient;
+            // desired rotation on the X-axis by the diagonal across an angled square
+            float targetX = -Mathf.Atan2(targetVec.y, Mathf.Sqrt(Mathf.Pow(targetVec.x, 2)+Mathf.Pow(targetVec.z, 2)))*Mathf.Rad2Deg;
+            if (behavior == Behavior.eat) { targetX += 5; } // Eat Seaweed from above
+            float currentX = transform.rotation.eulerAngles.x;
+            float deltaX = Mathf.DeltaAngle(currentX, targetX);
+            angleCorrection.x = deltaX * pitchCoefficient;
 
             // -------------------- //
             // -- Apply steering -- //
             // -- ----------------- //
             string s = "targetVec:   "+targetVec+"\n";
             s += "Yaw delta:   "+deltaY+"\n";
-            s += "Pitch Delta: "+deltaZ+"\n";
+            s += "Pitch Delta: "+deltaX+"\n";
             s += "Angle Correction:  "+angleCorrection+"\n";
             s += "AngVel Correction: "+angVelCorrection+"\n";
             rb.AddRelativeTorque(angleCorrection, ForceMode.VelocityChange);
@@ -207,9 +201,9 @@ public class FishController : MonoBehaviour
 
             // Swimmy swimmy
             if (rb.velocity.magnitude < maxSpeed && targetVec.magnitude > standoff) {
-                rb.AddForce(Vector3.Normalize(transform.right)*speed);
+                rb.AddForce(Vector3.Normalize(transform.forward)*speed);
             } else if (targetVec.magnitude < standoff * 0.75f) {
-                rb.AddForce(Vector3.Normalize(transform.right)*-0.5f*speed);
+                rb.AddForce(Vector3.Normalize(transform.forward)*-0.5f*speed);
             }
 
             // ---------- //
@@ -225,7 +219,7 @@ public class FishController : MonoBehaviour
         // Wander idly
         } else if (behavior == Behavior.idle) {
             // Swimmy swimmy
-            rb.AddForce(Vector3.Normalize(transform.right)*speed*0.5f);
+            rb.AddForce(Vector3.Normalize(transform.forward)*speed*0.5f);
             if (transform.position.y > 0) {
                 //rb.AddForce(Vector3.Normalize(transform.right)*-5f*speed, ForceMode.Acceleration);
                 //rb.AddRelativeTorque(new Vector3(0, 1, 1) *5*speed);
@@ -243,7 +237,7 @@ public class FishController : MonoBehaviour
             idleTorque.z = Mathf.Clamp(idleTorque.z + Random.Range(-sizeSqr, sizeSqr)*0.2f - (deltaZ/90f)*size, -sizeSqr, sizeSqr);
 
             // Roll correction
-            idleTorque.x = Mathf.DeltaAngle(axisX, 0) * rollCoefficient;
+            idleTorque.x = Mathf.DeltaAngle(axisZ, 0) * rollCoefficient;
 
             rb.AddRelativeTorque(idleTorque);
         }
@@ -256,8 +250,8 @@ public class FishController : MonoBehaviour
     }
 
     void OnCollisionEnter(Collision collision) {
-        if (collision.gameObject.layer == 3) {
-            rb.AddForce(Vector3.Normalize(transform.right)*-speed, ForceMode.Acceleration);
+        if (collision.gameObject.layer == 3 && behavior == Behavior.idle) {
+            rb.AddForce(Vector3.Normalize(transform.forward)*-speed, ForceMode.Acceleration);
         }
     }
 
@@ -376,7 +370,7 @@ public class FishController : MonoBehaviour
         if (food > maxFood) {
             Idle();
             idleTorque.y = Random.Range(-2*sizeSqr, 2*sizeSqr);
-            rb.AddForce(Vector3.Normalize(transform.right)*-1f*speed, ForceMode.Acceleration);
+            rb.AddForce(Vector3.Normalize(transform.forward)*-1f*speed, ForceMode.Acceleration);
             if (Time.time - reproduceTimer > reproduceDelay) {
                 Reproduce();
             }
