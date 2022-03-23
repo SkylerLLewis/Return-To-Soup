@@ -46,6 +46,15 @@ public class CameraControl : MonoBehaviour
         omniCount = GameObject.Find("Omnivore Count").GetComponent<TextMeshProUGUI>();
         carnCount = GameObject.Find("Carnivore Count").GetComponent<TextMeshProUGUI>();
 
+        // Set up culling distances
+        Camera camera = GetComponent<Camera>();
+        float[] distances = new float[32];
+        distances[6] = 100; // Plants
+        distances[7] = 50;  // Fish
+        distances[8] = 50;  // Statics
+        distances[9] = 25;  // Eggs
+        camera.layerCullDistances = distances;
+
         InvokeRepeating("UpdateCounts", 0f, 5f);
         InvokeRepeating("UpdateInfo", 0f, 1f);
     }

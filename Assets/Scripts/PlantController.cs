@@ -12,10 +12,9 @@ public class PlantController : MonoBehaviour
     float metaTick = 5,
           growInterval = 25,
           leafCost = 100,
-          reproduceCost = 500,
           reproduceInterval = 200;
     float depth, depthFactor, growTimer, saveThreshold, reproduceTimer, birth,
-          depthanin;
+          depthanin, reproduceCost;
     Color color;
     int leaves = 0;
     List<int> missingLeaves;
@@ -35,25 +34,29 @@ public class PlantController : MonoBehaviour
 
         birth = Time.time;
         depth = Mathf.Abs(transform.position.y);
-        food = reproduceCost + 20*(1+growInterval/metaTick);
         saveThreshold = 200+ 25*leaves;
     }
     
-    public void SetStats(float d, bool seeder=false) {
-        
+    public void SetStats(float d, float repCost, bool seeder=false) {
+        // Seed investment
+        reproduceCost = repCost;
+        food = reproduceCost/2;
+
         // Depthanin pigment effects
         depthanin = d;
-        depthFactor = Mathf.Clamp(depth/10f, 0.5f, Mathf.Infinity);
+        // Standard photosynthesis breaks even at 50m depth
+        depthFactor = (50-depth)/50;
         if (depthanin > 0) {
-            depthFactor = 0.5f + (depthFactor/(1+depthanin));
+            // Average depthanin and standard (depthanin 1 is just depthanin)
+            depthFactor = (depthFactor * (1-depthanin)) + ((0.6f - 0.6f*depth/100) * depthanin);
         }
 
         // Coloration
         if (depthanin > 0) {
             color = new Color(
-                0.5f*depthanin,
-                1f-depthanin,
-                1f*depthanin
+                0.4f-0.2f*depthanin,
+                0.7f-0.7f*depthanin,
+                0.2f+0.2f*depthanin
             );
         } else {
             color = Color.green;
@@ -62,13 +65,14 @@ public class PlantController : MonoBehaviour
         if (!seeder) {
             Invoke("Sprout", growInterval*Random.Range(16f, 24f));
         } else {
+            food = Random.Range(reproduceCost/2, reproduceCost*3);
             Sprout();
         }
     }
 
     public void Sprout() {
         growTimer = Time.time - growInterval;
-        reproduceTimer = Time.time;
+        reproduceTimer = Time.time + (Random.Range(0f, 0.2f)*reproduceInterval);
         InvokeRepeating("Metabolism", Random.Range(0f, metaTick), metaTick);
     }
 
@@ -76,18 +80,18 @@ public class PlantController : MonoBehaviour
         leaves = transform.childCount-1;
         if (leaves != 0) {
             if (food < 4000) {
-                food += (10 + leaves*5) /depthFactor;
+                food += (20 + leaves*5) * depthFactor;
                 saveThreshold = 200+ 25*leaves;
             }
             // Reproduce if you can
-            if (Time.time - reproduceTimer > reproduceInterval) {
+            if (food > reproduceCost && Time.time - reproduceTimer > reproduceInterval) {
                 Reproduce();
             }
         } else {
             food -= 20;
-            if (food <= 0) {
-                Die();
-            }
+        }
+        if (food <= 0) {
+            Die();
         }
         // Make leaf if you can, save up if you're not leafless
         if (((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost))
@@ -99,8 +103,8 @@ public class PlantController : MonoBehaviour
     }
 
     void Grow() {
-        if (Mathf.Ceil(leaves/5)+1 >= Mathf.Floor(depth)) {
-            return; // Do not grow out of the water
+        if (Mathf.Ceil(leaves/5)+1 >= Mathf.Floor(depth) || leaves >= 50) {
+            return; // Do not grow out of the water or too tall
         }
         if (missingLeaves.Count > 0) {
             missingLeaves.Sort();
@@ -159,20 +163,26 @@ public class PlantController : MonoBehaviour
     }
 
     void Reproduce() {
-        Vector3 pos = FindSpot();
-        if (pos == Vector3.zero) { return; } // no spot
-        float newDepthanin = depthanin;
-        if ((depthanin != 0 && depthanin != 1) || Random.Range(0,100) < 1) { // 1% chance to evolve depthanin
-            Debug.Log("DEPTHANIN SPOTTED");
-            newDepthanin = Mathf.Clamp01(depthanin*Random.Range(0.90f, 1.10f)); // max 10% variance
-        }
-        GameObject clone = Instantiate(
-            baby,
-            pos,
-            Quaternion.identity,
-            roots.transform);
-        clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(newDepthanin);
+        do {
+            Vector3 pos = FindSpot();
+            if (pos == Vector3.zero) { break; } // no spot
+            float newDepthanin = depthanin;
+            float newReproduceCost = reproduceCost;
+            if ((depthanin != 0 && depthanin != 1) || Random.Range(0,100) < 5) { // 5% chance to evolve depthanin
+                newDepthanin = Mathf.Clamp01(depthanin+Random.Range(-0.50f, 0.50f)); // max 50% variance
+            }
+            if (Random.Range(0, 100) < 5) { // 5% chance to change it
+                newReproduceCost = reproduceCost * Random.Range(0.9f, 1.1f); // max 20% variance
+            }
+            GameObject clone = Instantiate(
+                baby,
+                pos,
+                Quaternion.identity,
+                roots.transform);
+            clone.name = clone.name.Split('(')[0];
+            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost);
+            food -= reproduceCost;
+        } while (food >= reproduceCost*2);
         reproduceTimer = Time.time;
         // Die, if old enough
         if (Time.time - birth > reproduceInterval*10) {
@@ -183,7 +193,7 @@ public class PlantController : MonoBehaviour
     Vector3 FindSpot() {
         Vector3 pos = transform.position;
         float angle = Random.Range(0f, 2f) * Mathf.PI;
-        float distance = Random.Range(1.5f, 3f);
+        float distance = Random.Range(3f, 4f);
         if (Random.Range(0,25) == 0) {
             distance = Random.Range(10f, 25f);
         }
@@ -192,13 +202,13 @@ public class PlantController : MonoBehaviour
         pos.y = 50;
         // Find the ground nearby
         RaycastHit hit;
-        if (!Physics.Raycast(pos, -Vector3.up, out hit, Mathf.Infinity, LayerMask.GetMask("Terrain"))) {
+        if (!Physics.Raycast(pos, -Vector3.up, out hit, 150, LayerMask.GetMask("Terrain"))) {
             return Vector3.zero; // No hit = no spot
         }
         if (hit.point.y > -1) { return Vector3.zero; } // Not deep enough
         pos.y = hit.point.y;
         // Check if space is occupied
-        if (Physics.CheckSphere(pos, 1, LayerMask.GetMask("Roots"))) {
+        if (Physics.CheckSphere(pos, 1.5f, LayerMask.GetMask("Roots"))) {
             return Vector3.zero;
         }
         return pos;
@@ -217,13 +227,20 @@ public class PlantController : MonoBehaviour
         string labels="", values="";
         panelTitle.text = "Seaweed";
         labels += "Food:\n"; values += Mathf.RoundToInt(food)+"\n";
-        labels += "Seed:\n";
+        labels += "Seed Time:\n";
         int timeToSeed = Mathf.RoundToInt(reproduceInterval - (Time.time - reproduceTimer));
         if (timeToSeed > 0) {
             values += timeToSeed+"s\n";
         } else {
             values += "0s\n";
         }
+        labels += "Seed Cost:\n"; values += Mathf.RoundToInt(reproduceCost)+"\n";
+        if (depthanin > 0) {
+            labels += "Depthanin:\n"; values += Mathf.RoundToInt(depthanin*100)+"%\n";
+        } else {
+            labels += "Depthanin:\n"; values += "- \n";
+        }
+        labels += "Light:\n"; values += Mathf.RoundToInt(100f*depthFactor)+"%\n";
         labels += "Age:\n"; values += Mathf.RoundToInt(Time.time - birth)+"\n";
         panelLabels.text = labels;
         panelValues.text = values;

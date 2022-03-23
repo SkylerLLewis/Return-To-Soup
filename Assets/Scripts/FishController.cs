@@ -17,7 +17,7 @@ public class FishController : MonoBehaviour
     public float reproduceTimer;
     float reproduceDelay;
     public float food, health, maxHealth;
-    float standoff = 1f;
+    float standoff = 0.5f;
     public Vector3 idleTorque;
 
     public enum Behavior {idle, eat, predate};
@@ -26,7 +26,7 @@ public class FishController : MonoBehaviour
     PID angleController, angVelController;
     static float yawCoefficient = 0.15f,
                  pitchCoefficient = 0.15f,
-                 rollCoefficient = 0.18f;
+                 rollCoefficient = 0.12f;
     float speed, maxSpeed, maxTurn;
     Color scaleColor;
     Vector3 targetAngle, angleCorrection, angVelCorrection, torque;
@@ -67,7 +67,7 @@ public class FishController : MonoBehaviour
         maxSpeed = 10;
         speed = 100; // Newtons per 0.2sec
         maxTurn = 8; // Newton meters per 0.2sec
-        maxFood = 300;
+        maxFood = 200;
         maxHealth = 10;
 
         Retarget();
@@ -170,7 +170,8 @@ public class FishController : MonoBehaviour
             // ------------------- //
             // -- Yaw Targeting -- //
             // -- ---------------- //
-            float targetY = -Mathf.Atan2(targetVec.z, targetVec.x) * Mathf.Rad2Deg;
+            // Operating as if the z axis is angle '0' on the z-x plane 
+            float targetY = Mathf.Atan2(targetVec.x, targetVec.z) * Mathf.Rad2Deg;
             targetAngle.y = targetY;
             float currentY = transform.rotation.eulerAngles.y;
             float deltaY = Mathf.DeltaAngle(currentY, targetY);
@@ -232,18 +233,18 @@ public class FishController : MonoBehaviour
 
             // Slowly pitch to explore depth
             // Pitch strongly tends towards zero
-            float deltaZ = Mathf.DeltaAngle(0, transform.eulerAngles.z);
-            if (deltaZ > 180) { deltaZ -= 360; }
-            idleTorque.z = Mathf.Clamp(idleTorque.z + Random.Range(-sizeSqr, sizeSqr)*0.2f - (deltaZ/90f)*size, -sizeSqr, sizeSqr);
+            float deltaX = Mathf.DeltaAngle(0, transform.eulerAngles.x);
+            if (deltaX > 180) { deltaX -= 360; }
+            idleTorque.x = Mathf.Clamp(idleTorque.z + Random.Range(-sizeSqr, sizeSqr)*0.2f - (deltaX/90f)*size, -sizeSqr, sizeSqr);
 
             // Roll correction
-            idleTorque.x = Mathf.DeltaAngle(axisZ, 0) * rollCoefficient;
+            idleTorque.z = Mathf.DeltaAngle(axisZ, 0) * rollCoefficient;
 
             rb.AddRelativeTorque(idleTorque);
         }
 
         // Get Hungry
-        food -= size*2;
+        food -= size;
         if (food <= 0) {
             Die();
         }
@@ -252,6 +253,7 @@ public class FishController : MonoBehaviour
     void OnCollisionEnter(Collision collision) {
         if (collision.gameObject.layer == 3 && behavior == Behavior.idle) {
             rb.AddForce(Vector3.Normalize(transform.forward)*-speed, ForceMode.Acceleration);
+            rb.AddRelativeTorque(Vector3.up*yawCoefficient*1000);
         }
     }
 
@@ -335,8 +337,12 @@ public class FishController : MonoBehaviour
                     targetPosition = child.position;
                 }
             }*/
-            // Collider based search
-            Collider[] hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Plants"));
+            // -- Collider based search
+            // Check a small area first
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, 2, LayerMask.GetMask("Plants"));
+            if (hitColliders.Length == 0) {
+                hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Plants"));
+            }
             if (hitColliders.Length != 0) {
                 foreach (Collider hit in hitColliders) {
                     float dist = (transform.position - hit.transform.position).sqrMagnitude;
@@ -363,7 +369,7 @@ public class FishController : MonoBehaviour
     }
 
     void Eat() {
-        food += 8 * size * herbivorousness;
+        food += 2 * size * herbivorousness;
         if (foodItem.plant.Eaten(size)) {
             Invoke("Retarget", 0.1f);
         }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class LeafController : MonoBehaviour
 {
-    float health = 10, maxHealth;
+    float health = 4, maxHealth;
     int id;
     PlantController parent;
 
