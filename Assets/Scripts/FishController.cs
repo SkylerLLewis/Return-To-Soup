@@ -26,11 +26,19 @@ public class FishController : MonoBehaviour
     PID angleController, angVelController;
     static float yawCoefficient = 0.15f,
                  pitchCoefficient = 0.15f,
-                 rollCoefficient = 0.12f;
+                 rollCoefficient = 0.10f,
+                 idleVariance;
     float speed, maxSpeed, maxTurn;
+    float baseReproduceDelay,
+          baseSpeed = 100, // newtons per 0.5sec
+          baseMaxSpeed = 10,
+          baseYawCoefficient = yawCoefficient,
+          baseMaxTurn = 10,
+          baseMaxFood = 200,
+          baseMaxHealth = 10;
     Color scaleColor;
     Vector3 targetAngle, angleCorrection, angVelCorrection, torque;
-    int sightDistance = 256; // actual distance is 16, but using squared dists
+    int sightDistance, baseSightDistance = 256; // actual distance is 16, but using squared dists
 
     public float size, sizeSqr, herbivorousness;
 
@@ -63,13 +71,6 @@ public class FishController : MonoBehaviour
         // Prefabs
         baby = Resources.Load("Prefabs/Egg") as GameObject;
 
-        // Stats
-        maxSpeed = 10;
-        speed = 100; // Newtons per 0.2sec
-        maxTurn = 8; // Newton meters per 0.2sec
-        maxFood = 200;
-        maxHealth = 10;
-
         Retarget();
 
         targetAngle = new Vector3();
@@ -78,62 +79,98 @@ public class FishController : MonoBehaviour
         idleTorque = Vector3.zero;
 
         behavior = Behavior.idle;
-        reproduceTimer = Time.time - Random.Range(0, 30);
-        reproduceDelay = 60f * Random.Range(0.9f, 1.1f);
         birth = Time.time;
+        
+        baseReproduceDelay = 60f * Random.Range(0.9f, 1.1f);
 
         foodItem = new FoodItem();
+
+        transform.eulerAngles = new Vector3(-45, Random.Range(0, 360), 0);
     }
 
 // Set attributes based on genetic features
     public void SetStats(float s, float h, Color color) {
-        size = s;
+        size = s/4;
         sizeSqr = Mathf.Pow(size, 2);
         transform.localScale *= size;
         float sizeMod = 0.5f+(size*0.5f);
 
         // Movement
-        standoff = 0.5f + size*0.5f;
-        speed *= sizeMod;
-        maxSpeed *= sizeMod;
-        maxTurn /= sizeMod;
-        //yawCoefficient *= sizeMod;
+        standoff = 0.75f*sizeMod;
+        speed = baseSpeed * sizeMod;
+        maxSpeed = baseMaxSpeed * sizeMod;
+        maxTurn = baseMaxTurn / sizeMod;
+        idleVariance = size*5;
 
         // Food
-        sightDistance = Mathf.RoundToInt(sightDistance*sizeMod);
+        sightDistance = Mathf.RoundToInt(baseSightDistance*sizeMod);
         herbivorousness = h;
-        maxFood *= Mathf.Pow(size, 1.2f);
-        food = maxFood/2;
+        maxFood = baseMaxFood * Mathf.Pow(size, 1.5f) * (2 - herbivorousness);
+        food = maxFood;
 
         // Reproduction
-        reproduceDelay *= Mathf.Pow(size,2);
+        reproduceDelay = baseReproduceDelay * s;
+        reproduceTimer = Time.time + reproduceDelay;
 
         // Coloration
         scaleColor = color;
         transform.gameObject.GetComponent<MeshRenderer>().material.color = color;
 
         // Age
-        lifespan = Mathf.RoundToInt(300 * size);
+        lifespan = Mathf.RoundToInt(400 *s);
         Invoke("Die", lifespan);
 
         // Health
-        maxHealth *= size;
+        maxHealth = baseMaxHealth * size;
         health = maxHealth;
 
         // Live
         // Act every 0.5 sec
         InvokeRepeating("Move", Random.Range(0.5f,1f), 0.5f);
+        // Grow up when able to reproduce
+        Invoke("Grow", reproduceDelay*2-1);
     }
 
-    private void FixedUpdate() {
+    void Grow() {
+        size *= 4;
+        sizeSqr = Mathf.Pow(size, 2);
+        transform.localScale *= 2;
+        float sizeMod = 0.5f+(size*0.5f/2); // Halved for baby time
+
+        // Movement
+        standoff = 0.75f*sizeMod;
+        speed = baseSpeed * sizeMod;
+        maxSpeed = baseMaxSpeed * sizeMod;
+        maxTurn = baseMaxTurn * sizeMod;
+        idleVariance = size*5;
+
+        // Food
+        sightDistance = Mathf.RoundToInt(baseSightDistance*sizeMod);
+        maxFood = baseMaxFood * Mathf.Pow(size, 1.2f) * 2*(2 - herbivorousness);
+
+        // Health
+        maxHealth = baseMaxHealth * size;
+        health = maxHealth;
+    }
+
+    /*private void FixedUpdate() {
         // Gravity above water
         if (transform.position.y > 0) {
             rb.AddForce(Vector3.up*-10);
+            idleTorque.x = 2*sizeSqr;
         }
-    }
+    }*/
 
     // Fish body driver, 2/s
     void Move() {
+        
+        // Gravity above water
+        if (transform.position.y > -0.2f) {
+            rb.AddForce(Vector3.up*-50*size);
+            rb.AddRelativeTorque(Vector3.right*size*50, ForceMode.Acceleration);
+        }
+        
+        
         // Manage Behavior changes,
         // Searching for a target can only happen 1/4 brain ticks
         if ((behavior == Behavior.eat && foodItem.plant == null) ||
@@ -221,24 +258,24 @@ public class FishController : MonoBehaviour
         } else if (behavior == Behavior.idle) {
             // Swimmy swimmy
             rb.AddForce(Vector3.Normalize(transform.forward)*speed*0.5f);
-            if (transform.position.y > 0) {
+            if (transform.position.y > -size) {
                 //rb.AddForce(Vector3.Normalize(transform.right)*-5f*speed, ForceMode.Acceleration);
                 //rb.AddRelativeTorque(new Vector3(0, 1, 1) *5*speed);
             }
             
             // Yaw to wander side to side
             // The yaw is lightly bound to allow for rapid changes
-            idleTorque.y += Random.Range(-sizeSqr, sizeSqr) - idleTorque.y/8;
-            idleTorque.y = Mathf.Clamp(idleTorque.y, -sizeSqr, sizeSqr);
+            idleTorque.y += Random.Range(-size, size) - idleTorque.y/8;
+            idleTorque.y = Mathf.Clamp(idleTorque.y, -size, size);
 
             // Slowly pitch to explore depth
             // Pitch strongly tends towards zero
             float deltaX = Mathf.DeltaAngle(0, transform.eulerAngles.x);
             if (deltaX > 180) { deltaX -= 360; }
-            idleTorque.x = Mathf.Clamp(idleTorque.z + Random.Range(-sizeSqr, sizeSqr)*0.2f - (deltaX/90f)*size, -sizeSqr, sizeSqr);
+            idleTorque.x = Mathf.Clamp(idleTorque.x + Random.Range(-size, size) - (deltaX/90f)*size, -size, size);
 
             // Roll correction
-            idleTorque.z = Mathf.DeltaAngle(axisZ, 0) * rollCoefficient;
+            idleTorque.z = Mathf.DeltaAngle(axisZ, 0) / 100;
 
             rb.AddRelativeTorque(idleTorque);
         }
@@ -369,7 +406,7 @@ public class FishController : MonoBehaviour
     }
 
     void Eat() {
-        food += 2 * size * herbivorousness;
+        food += 3 * size * herbivorousness;
         if (foodItem.plant.Eaten(size)) {
             Invoke("Retarget", 0.1f);
         }
@@ -414,15 +451,32 @@ public class FishController : MonoBehaviour
     void Reproduce() {
         // Evolve new stats
         float newSize = size;
-        if (Random.Range(0,100) < 100) { // 100% chance of mutation
-            newSize *= Random.Range(0.90f, 1.10f); // max 10% variance
+        if (Random.Range(0,100) < 10) { // 10% chance of mutation
+            newSize *= Random.Range(0.75f, 1.25f); // max 25% variance
         }
         Color newColor = scaleColor;
-        if (Random.Range(0,1000) <= 1) { // 0.1% of color mutation
+        if (Random.Range(0,100) < 1) { // 1% of color mutation
             newColor.r = Mathf.Clamp01(newColor.r + Random.Range(-0.5f, 0.5f));
             newColor.g = Mathf.Clamp01(newColor.g + Random.Range(-0.5f, 0.5f));
             newColor.b = Mathf.Clamp01(newColor.b + Random.Range(-0.5f, 0.5f));
         }
+
+        float newHerbivorousness = herbivorousness;
+        if (Random.Range(0,100) < 1) { // 0.1% Chance of agressive behavior change
+            if (herbivorousness == 0) { // Herbivore becomes aggressive
+                newHerbivorousness = Random.Range(0.25f, 0.75f);
+            } else if (herbivorousness < 1) { // Omnivore varies diet
+                newHerbivorousness += Mathf.Clamp01(Random.Range(-1f, 1f));
+            } else { // Carnivore starts gathering
+                newHerbivorousness = Random.Range(0.25f, 0.75f);
+            }
+            // Color change to reflect appetite change!
+            newColor.r = Mathf.Clamp01(newColor.r + Random.Range(-1f, 1f));
+            newColor.g = Mathf.Clamp01(newColor.g + Random.Range(-1f, 1f));
+            newColor.b = Mathf.Clamp01(newColor.b + Random.Range(-1f, 1f));
+            Debug.Log("DIET CHANGE: ("+newHerbivorousness+"), ("+transform.position.x+", "+transform.position.z+")");
+        }
+
         food -= maxFood/2;
         reproduceTimer = Time.time;
         RaycastHit hit;
@@ -435,7 +489,7 @@ public class FishController : MonoBehaviour
             Quaternion.identity,
             eggs.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<EggController>().SetStats(newSize, herbivorousness, newColor);
+        clone.GetComponent<EggController>().SetStats(newSize, newHerbivorousness, newColor);
     }
 
     void Die() {

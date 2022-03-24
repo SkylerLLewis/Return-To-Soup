@@ -63,7 +63,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, seeder:true);
         // Feesh
         GameObject fishClone = Instantiate(
             fish,
@@ -129,7 +129,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, seeder:true);
     }
 
     void SpawnFish() {
@@ -158,7 +158,7 @@ public class Initializer : MonoBehaviour
             FindWater(),
             Quaternion.identity,
             fishes.transform);
-        clone.name = "Omnivore";
+        clone.name = "Carnivore";
         clone.GetComponent<FishController>().SetStats(4f, 0, Color.blue);
     }
 }

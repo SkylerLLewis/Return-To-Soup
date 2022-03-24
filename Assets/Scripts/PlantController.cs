@@ -10,11 +10,11 @@ public class PlantController : MonoBehaviour
     GameObject baby, leafPrefab, plants, roots;
     public float food;
     float metaTick = 5,
-          growInterval = 25,
+          growInterval = 30,
           leafCost = 100,
           reproduceInterval = 200;
     float depth, depthFactor, growTimer, saveThreshold, reproduceTimer, birth,
-          depthanin, reproduceCost;
+          depthanin, reproduceCost, seedDelay;
     Color color;
     int leaves = 0;
     List<int> missingLeaves;
@@ -32,15 +32,18 @@ public class PlantController : MonoBehaviour
 
         missingLeaves = new List<int>();
 
-        birth = Time.time;
         depth = Mathf.Abs(transform.position.y);
         saveThreshold = 200+ 25*leaves;
+        birth = Time.time;
     }
     
-    public void SetStats(float d, float repCost, bool seeder=false) {
+    public void SetStats(float d, float repCost, float sD, bool seeder=false) {
         // Seed investment
         reproduceCost = repCost;
         food = reproduceCost/2;
+
+        // Seed delay
+        seedDelay = sD;
 
         // Depthanin pigment effects
         depthanin = d;
@@ -48,7 +51,8 @@ public class PlantController : MonoBehaviour
         depthFactor = (50-depth)/50;
         if (depthanin > 0) {
             // Average depthanin and standard (depthanin 1 is just depthanin)
-            depthFactor = (depthFactor * (1-depthanin)) + ((0.6f - 0.6f*depth/100) * depthanin);
+            // Depthanin Starts at 50% efficiency, but only loses 0.25%/m
+            depthFactor = (depthFactor * (1-depthanin)) + ((0.5f - 0.5f*depth/200) * depthanin);
         }
 
         // Coloration
@@ -63,7 +67,7 @@ public class PlantController : MonoBehaviour
         }
         
         if (!seeder) {
-            Invoke("Sprout", growInterval*Random.Range(16f, 24f));
+            Invoke("Sprout", growInterval*seedDelay);
         } else {
             food = Random.Range(reproduceCost/2, reproduceCost*3);
             Sprout();
@@ -71,9 +75,10 @@ public class PlantController : MonoBehaviour
     }
 
     public void Sprout() {
-        growTimer = Time.time - growInterval;
-        reproduceTimer = Time.time + (Random.Range(0f, 0.2f)*reproduceInterval);
+        birth = Time.time;
         InvokeRepeating("Metabolism", Random.Range(0f, metaTick), metaTick);
+        InvokeRepeating("Grow", Random.Range(0f, growInterval), growInterval);
+        InvokeRepeating("Reproduce", Random.Range(0f, growInterval), reproduceInterval);
     }
 
     void Metabolism() {
@@ -81,98 +86,90 @@ public class PlantController : MonoBehaviour
         if (leaves != 0) {
             if (food < 4000) {
                 food += (20 + leaves*5) * depthFactor;
-                saveThreshold = 200+ 25*leaves;
-            }
-            // Reproduce if you can
-            if (food > reproduceCost && Time.time - reproduceTimer > reproduceInterval) {
-                Reproduce();
             }
         } else {
             food -= 20;
-        }
-        if (food <= 0) {
-            Die();
-        }
-        // Make leaf if you can, save up if you're not leafless
-        if (((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost))
-        && Time.time - growTimer >= growInterval) {
-            Grow();
-        } else {
-            //Debug.Log("Truth values: (((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost)) && Time.time - growTimer >= growInterval) \n((("+(leaves != 0 && food >= saveThreshold)+") || ("+(leaves == 0 && food >= leafCost)+")) && "+(Time.time - growTimer >= growInterval)+")");
+            if (food <= 0) {
+                Die();
+            }
         }
     }
 
     void Grow() {
-        if (Mathf.Ceil(leaves/5)+1 >= Mathf.Floor(depth) || leaves >= 50) {
-            return; // Do not grow out of the water or too tall
-        }
-        if (missingLeaves.Count > 0) {
-            missingLeaves.Sort();
-        }
-        do {
-            int leaf = leaves;
+        saveThreshold = 200+ 25*leaves;
+        if ((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost) &&
+        (leaves <= 80 && Mathf.Ceil(leaves/5)+1 < Mathf.Floor(depth))) {
             if (missingLeaves.Count > 0) {
-                leaf = missingLeaves[0];
-                missingLeaves.RemoveAt(0);
+                missingLeaves.Sort();
             }
-            food -= leafCost;
-            Quaternion angle = Quaternion.identity;
-            Vector3 eulerAngle = Vector3.zero;
-            Vector3 pos = this.transform.position;
-            pos.x += Random.Range(-0.05f, 0.05f);
-            pos.z += Random.Range(-0.05f, 0.05f);
-            int mod = leaf % 5;
-            if (mod == 0) { // Upward growth
-                pos.y += 1f * (leaf/5) + 0.75f;
-            } else { // Angled
-                pos.y += 1f * (leaf/5) + 0.55f;
-                eulerAngle.x = 45;
-                eulerAngle.y = Random.Range(0, 360);
-                pos.z += 0.3f*Mathf.Cos(eulerAngle.y*Mathf.Deg2Rad);
-                pos.x += 0.3f*Mathf.Sin(eulerAngle.y*Mathf.Deg2Rad);
-                /*if (mod == 1) { // Northeast Growth
-                    pos.x += 0.15f;
-                    pos.z += 0.15f;
-                    eulerAngle.y = 45;
-                } else if (mod == 2) { // Southeast Growth
-                    pos.x += 0.15f;
-                    pos.z -= 0.15f;
-                    eulerAngle.y = 135;
-                } else if (mod == 3) { // Southwest Growth
-                    pos.x -= 0.15f;
-                    pos.z -= 0.15f;
-                    eulerAngle.y = 225;
-                } else if (mod == 4) { // Northwest Growth
-                    pos.x -= 0.15f;
-                    pos.z += 0.15f;
-                    eulerAngle.y = 315;
-                }*/
-            }
-            angle.eulerAngles = eulerAngle;
-            // Create New leaf!
-            GameObject clone = Instantiate(
-                leafPrefab,
-                pos,
-                angle,
-                this.transform);
-            clone.name = clone.name.Split('(')[0];
-            clone.GetComponent<LeafController>().SetStats(leaf, color);
-            leaves++;
-        } while (food > saveThreshold);
-        growTimer = Time.time;
+            do {
+                int leaf = leaves;
+                if (missingLeaves.Count > 0) {
+                    leaf = missingLeaves[0];
+                    missingLeaves.RemoveAt(0);
+                }
+                food -= leafCost;
+                Quaternion angle = Quaternion.identity;
+                Vector3 eulerAngle = Vector3.zero;
+                Vector3 pos = this.transform.position;
+                pos.x += Random.Range(-0.05f, 0.05f);
+                pos.z += Random.Range(-0.05f, 0.05f);
+                int mod = leaf % 5;
+                if (mod == 0) { // Upward growth
+                    pos.y += 1f * (leaf/5) + 0.75f;
+                } else { // Angled
+                    pos.y += 1f * (leaf/5) + 0.55f;
+                    eulerAngle.x = 45;
+                    eulerAngle.y = Random.Range(0, 360);
+                    pos.z += 0.3f*Mathf.Cos(eulerAngle.y*Mathf.Deg2Rad);
+                    pos.x += 0.3f*Mathf.Sin(eulerAngle.y*Mathf.Deg2Rad);
+                    /*if (mod == 1) { // Northeast Growth
+                        pos.x += 0.15f;
+                        pos.z += 0.15f;
+                        eulerAngle.y = 45;
+                    } else if (mod == 2) { // Southeast Growth
+                        pos.x += 0.15f;
+                        pos.z -= 0.15f;
+                        eulerAngle.y = 135;
+                    } else if (mod == 3) { // Southwest Growth
+                        pos.x -= 0.15f;
+                        pos.z -= 0.15f;
+                        eulerAngle.y = 225;
+                    } else if (mod == 4) { // Northwest Growth
+                        pos.x -= 0.15f;
+                        pos.z += 0.15f;
+                        eulerAngle.y = 315;
+                    }*/
+                }
+                angle.eulerAngles = eulerAngle;
+                // Create New leaf!
+                GameObject clone = Instantiate(
+                    leafPrefab,
+                    pos,
+                    angle,
+                    this.transform);
+                clone.name = clone.name.Split('(')[0];
+                clone.GetComponent<LeafController>().SetStats(leaf, color);
+                leaves++;
+            } while (food > saveThreshold);
+        }
     }
 
     void Reproduce() {
-        do {
+        while (food >= reproduceCost) {
             Vector3 pos = FindSpot();
             if (pos == Vector3.zero) { break; } // no spot
             float newDepthanin = depthanin;
             float newReproduceCost = reproduceCost;
+            float newSeedDelay = seedDelay;
             if ((depthanin != 0 && depthanin != 1) || Random.Range(0,100) < 5) { // 5% chance to evolve depthanin
                 newDepthanin = Mathf.Clamp01(depthanin+Random.Range(-0.50f, 0.50f)); // max 50% variance
             }
-            if (Random.Range(0, 100) < 5) { // 5% chance to change it
-                newReproduceCost = reproduceCost * Random.Range(0.9f, 1.1f); // max 20% variance
+            if (Random.Range(0, 100) < 5) { // 5% chance to change seed investment
+                newReproduceCost = reproduceCost * Random.Range(0.8f, 1.2f); // max 20% variance
+            }
+            if (Random.Range(0,100) < 5) { // 5% chance to change it
+                newSeedDelay = seedDelay * Random.Range(0.8f, 1.2f); // max 20% variance
             }
             GameObject clone = Instantiate(
                 baby,
@@ -180,9 +177,9 @@ public class PlantController : MonoBehaviour
                 Quaternion.identity,
                 roots.transform);
             clone.name = clone.name.Split('(')[0];
-            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost);
+            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost, newSeedDelay);
             food -= reproduceCost;
-        } while (food >= reproduceCost*2);
+        }
         reproduceTimer = Time.time;
         // Die, if old enough
         if (Time.time - birth > reproduceInterval*10) {
@@ -208,7 +205,7 @@ public class PlantController : MonoBehaviour
         if (hit.point.y > -1) { return Vector3.zero; } // Not deep enough
         pos.y = hit.point.y;
         // Check if space is occupied
-        if (Physics.CheckSphere(pos, 1.5f, LayerMask.GetMask("Roots"))) {
+        if (Physics.CheckSphere(pos, 2f, LayerMask.GetMask("Roots"))) {
             return Vector3.zero;
         }
         return pos;
@@ -235,6 +232,7 @@ public class PlantController : MonoBehaviour
             values += "0s\n";
         }
         labels += "Seed Cost:\n"; values += Mathf.RoundToInt(reproduceCost)+"\n";
+        labels += "Sprout T:\n"; values += Mathf.RoundToInt(seedDelay)+"\n";
         if (depthanin > 0) {
             labels += "Depthanin:\n"; values += Mathf.RoundToInt(depthanin*100)+"%\n";
         } else {
