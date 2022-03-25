@@ -34,7 +34,7 @@ public class FishController : MonoBehaviour
           baseMaxSpeed = 10,
           baseYawCoefficient = yawCoefficient,
           baseMaxTurn = 10,
-          baseMaxFood = 200,
+          baseMaxFood = 100,
           baseMaxHealth = 10;
     Color scaleColor;
     Vector3 targetAngle, angleCorrection, angVelCorrection, torque;
@@ -61,12 +61,9 @@ public class FishController : MonoBehaviour
 
         // References
         rb = gameObject.GetComponent<Rigidbody>();
-        plants = GameObject.Find("Plants");
-        fishes = GameObject.Find("Fishes");
-        eggs = GameObject.Find("Eggs");
-        panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
-        panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
-        panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        plants = GameObject.FindWithTag("PlantBox");
+        fishes = GameObject.FindWithTag("FishBox");
+        eggs = GameObject.FindWithTag("EggBox");
         
         // Prefabs
         baby = Resources.Load("Prefabs/Egg") as GameObject;
@@ -105,8 +102,8 @@ public class FishController : MonoBehaviour
         // Food
         sightDistance = Mathf.RoundToInt(baseSightDistance*sizeMod);
         herbivorousness = h;
-        maxFood = baseMaxFood * Mathf.Pow(size, 1.5f) * (2 - herbivorousness);
-        food = maxFood;
+        maxFood = baseMaxFood * Mathf.Pow(size*2, 1.5f) * (2 - herbivorousness);
+        food = maxFood/2;
 
         // Reproduction
         reproduceDelay = baseReproduceDelay * s;
@@ -497,6 +494,11 @@ public class FishController : MonoBehaviour
     }
 
     public void DisplayStats() {
+        if (panelLabels == null) {
+            panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
+            panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
+            panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        }
         string labels="", values="";
         if (herbivorousness == 1) {
             panelTitle.text = "Herbivore";

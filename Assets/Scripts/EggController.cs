@@ -13,10 +13,7 @@ public class EggController : MonoBehaviour
         gameObject.layer = 8; // Statics
 
         baby = Resources.Load("Prefabs/Fish") as GameObject;
-        fishes = GameObject.Find("Fishes");
-        panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
-        panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
-        panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        fishes = GameObject.FindWithTag("FishBox");
 
         size = s;
         herbivorousness = h;
@@ -40,6 +37,11 @@ public class EggController : MonoBehaviour
     }
 
     public void DisplayStats() {
+        if (panelLabels == null) {
+            panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
+            panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
+            panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        }
         string labels="", values="";
         if (herbivorousness == 1) {
             panelTitle.text = "Herbivore";

@@ -134,7 +134,7 @@ GameObject:
   - component: {fileID: 32210691}
   m_Layer: 7
   m_Name: Fishes
-  m_TagString: Untagged
+  m_TagString: FishBox
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2546,7 +2546,7 @@ GameObject:
   - component: {fileID: 1468597630}
   m_Layer: 6
   m_Name: Plants
-  m_TagString: Untagged
+  m_TagString: PlantBox
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2760,7 +2760,7 @@ GameObject:
   - component: {fileID: 1566290527}
   m_Layer: 8
   m_Name: Eggs
-  m_TagString: Untagged
+  m_TagString: EggBox
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3326,7 +3326,7 @@ GameObject:
   - component: {fileID: 1897924894}
   m_Layer: 0
   m_Name: Roots
-  m_TagString: Untagged
+  m_TagString: RootBox
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

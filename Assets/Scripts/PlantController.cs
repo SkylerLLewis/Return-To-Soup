@@ -22,13 +22,8 @@ public class PlantController : MonoBehaviour
     void Awake() {
         gameObject.layer = 9; // Roots
 
-        baby = Resources.Load("Prefabs/Root") as GameObject;
-        leafPrefab = Resources.Load("Prefabs/Leaf") as GameObject;
-        plants = GameObject.Find("Plants");
-        roots = GameObject.Find("Roots");
-        panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
-        panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
-        panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        plants = GameObject.FindWithTag("PlantBox");
+        roots = GameObject.FindWithTag("RootBox");
 
         missingLeaves = new List<int>();
 
@@ -37,7 +32,11 @@ public class PlantController : MonoBehaviour
         birth = Time.time;
     }
     
-    public void SetStats(float d, float repCost, float sD, bool seeder=false) {
+    public void SetStats(float d, float repCost, float sD, GameObject _baby, GameObject _leafPrefab, bool seeder=false) {
+        // Passed resources
+        baby = _baby;
+        leafPrefab = _leafPrefab;
+
         // Seed investment
         reproduceCost = repCost;
         food = reproduceCost/2;
@@ -78,7 +77,7 @@ public class PlantController : MonoBehaviour
         birth = Time.time;
         InvokeRepeating("Metabolism", Random.Range(0f, metaTick), metaTick);
         InvokeRepeating("Grow", Random.Range(0f, growInterval), growInterval);
-        InvokeRepeating("Reproduce", Random.Range(0f, growInterval), reproduceInterval);
+        InvokeRepeating("Reproduce", Random.Range(growInterval, 2*growInterval), reproduceInterval);
     }
 
     void Metabolism() {
@@ -97,8 +96,8 @@ public class PlantController : MonoBehaviour
 
     void Grow() {
         saveThreshold = 200+ 25*leaves;
-        if ((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost) &&
-        (leaves <= 80 && Mathf.Ceil(leaves/5)+1 < Mathf.Floor(depth))) {
+        if (((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost)) &&
+        (leaves <= 60 && Mathf.Ceil(leaves/5)+1 < Mathf.Floor(depth))) {
             if (missingLeaves.Count > 0) {
                 missingLeaves.Sort();
             }
@@ -177,7 +176,7 @@ public class PlantController : MonoBehaviour
                 Quaternion.identity,
                 roots.transform);
             clone.name = clone.name.Split('(')[0];
-            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost, newSeedDelay);
+            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost, newSeedDelay, baby, leafPrefab);
             food -= reproduceCost;
         }
         reproduceTimer = Time.time;
@@ -189,6 +188,30 @@ public class PlantController : MonoBehaviour
 
     Vector3 FindSpot() {
         Vector3 pos = transform.position;
+        float distance = Random.Range(3f, 4f);
+        if (Random.Range(0,25) == 0) {
+            distance = Random.Range(10f, 25f);
+        }
+        float halfDist = distance/2;
+        int r = Random.Range(0,4);
+        if (r < 2) { // North/south bound
+            if (r % 2 == 0) { // North
+                pos.z += distance;
+            } else { // South
+                pos.z -= distance;
+            }
+            pos.x += Random.Range(-halfDist, halfDist);
+        } else { // East/West bound
+            if (r % 2 == 0) { // East
+                pos.x += distance;
+            } else { // West
+                pos.x -= distance;
+            }
+            pos.z += Random.Range(-halfDist, halfDist);
+        }
+        pos.y = Terrain.activeTerrain.SampleHeight(pos)-100;
+        if (pos.y > -1.5f) { return Vector3.zero; } // Not deep enough
+        /* Possibly inefficient finder
         float angle = Random.Range(0f, 2f) * Mathf.PI;
         float distance = Random.Range(3f, 4f);
         if (Random.Range(0,25) == 0) {
@@ -204,6 +227,7 @@ public class PlantController : MonoBehaviour
         }
         if (hit.point.y > -1) { return Vector3.zero; } // Not deep enough
         pos.y = hit.point.y;
+        */
         // Check if space is occupied
         if (Physics.CheckSphere(pos, 2f, LayerMask.GetMask("Roots"))) {
             return Vector3.zero;
@@ -221,6 +245,11 @@ public class PlantController : MonoBehaviour
     }
 
     public void DisplayStats() {
+        if (panelLabels == null) {
+            panelTitle = GameObject.Find("Info Panel Title").GetComponent<TextMeshProUGUI>();
+            panelLabels = GameObject.Find("Info Panel Labels").GetComponent<TextMeshProUGUI>();
+            panelValues = GameObject.Find("Info Panel Values").GetComponent<TextMeshProUGUI>();
+        }
         string labels="", values="";
         panelTitle.text = "Seaweed";
         labels += "Food:\n"; values += Mathf.RoundToInt(food)+"\n";

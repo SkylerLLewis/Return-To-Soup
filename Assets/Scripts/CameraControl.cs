@@ -52,7 +52,7 @@ public class CameraControl : MonoBehaviour
         distances[6] = 100; // Plants
         distances[7] = 50;  // Fish
         distances[8] = 50;  // Statics
-        distances[9] = 25;  // Eggs
+        distances[9] = 100;  // Roots
         camera.layerCullDistances = distances;
 
         InvokeRepeating("UpdateCounts", 0f, 5f);

@@ -7,11 +7,11 @@ public class Initializer : MonoBehaviour
     static int seedPlants = 400,
                seedFish = 100,
                seedOmnivores = 0,
-               seedCarnivores = 1;
+               seedCarnivores = 0;
     // Spawn Rang: X {-250, -400}, Z {300, 440}
-    static Vector3 spawnCenter = new Vector3(-325, 5, 370),
-                   spawnRange = new Vector3(75, 0, 70);
-    GameObject staticPlants, plants, fishes, plant, fish, roots;
+    static Vector3 spawnCenter = new Vector3(-330, 5, 370),
+                   spawnRange = new Vector3(80, 0, 80);
+    GameObject staticPlants, plants, leafPrefab, fishes, plant, fish, roots;
     //int regenCounter = 0, regenThreshold = 500;
     bool debug = false;
 
@@ -26,6 +26,7 @@ public class Initializer : MonoBehaviour
 
         // Prefabs
         plant = Resources.Load("Prefabs/Root") as GameObject;
+        leafPrefab = Resources.Load("Prefabs/Leaf") as GameObject;
 
         fish = Resources.Load("Prefabs/Fish") as GameObject;
 
@@ -63,15 +64,16 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, plant, leafPrefab, seeder:true);
         // Feesh
-        GameObject fishClone = Instantiate(
+        /*GameObject fishClone = Instantiate(
             fish,
             new Vector3(-320,-1,320),
             Quaternion.identity,
             fishes.transform);
         fishClone.name = fishClone.name.Split('(')[0];
         fishClone.GetComponent<FishController>().SetStats(1f, 1, Color.white);//Random.Range(0.1f, 2f), 1);
+        */
     }
 
     Vector3 FindWater() {
@@ -129,7 +131,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, plant, leafPrefab, seeder:true);
     }
 
     void SpawnFish() {
@@ -139,7 +141,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             fishes.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<FishController>().SetStats(Random.Range(0.6f, 2f), 1, Color.white);//Random.Range(0.1f, 2f), 1);
+        clone.GetComponent<FishController>().SetStats(Mathf.Pow(Random.Range(0.5f, 2f), 2), 1, Color.white);//Random.Range(0.1f, 2f), 1);
     }
 
     void SpawnOmnivore() {
