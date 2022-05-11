@@ -64,7 +64,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, plant, leafPrefab, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, 0, plant, leafPrefab, seeder:true);
         // Feesh
         /*GameObject fishClone = Instantiate(
             fish,
@@ -131,7 +131,7 @@ public class Initializer : MonoBehaviour
             Quaternion.identity,
             roots.transform);
         clone.name = clone.name.Split('(')[0];
-        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, plant, leafPrefab, seeder:true);
+        clone.GetComponent<PlantController>().SetStats(0, 1000, 20, 0, plant, leafPrefab, seeder:true);
     }
 
     void SpawnFish() {

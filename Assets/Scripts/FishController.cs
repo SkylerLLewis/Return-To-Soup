@@ -309,9 +309,12 @@ public class FishController : MonoBehaviour
 
     // Brain of Fish, Decides where to go
     void Retarget() {
-        if (herbivorousness < 1) { // search for fishie
+        float bestDist;
+        Collider[] hitColliders;
+        // Carnivores, and hungry omnivores
+        if (herbivorousness < 1 && Mathf.Min(food/maxFood, 1f) <= 1-herbivorousness) { // search for fishie
             foodItem.fish = null;
-            float bestDist = Mathf.Infinity;
+            bestDist = Mathf.Infinity;
             // Dumb search over everything
             /*foreach (Transform child in fishes.transform) {
                 FishController morsel = child.gameObject.GetComponent<FishController>();
@@ -327,7 +330,7 @@ public class FishController : MonoBehaviour
                 }
             }*/
             // Collider based search
-            Collider[] hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Fish"));
+            hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Fish"));
             if (hitColliders.Length != 0) {
                 foreach (Collider hit in hitColliders) {
                     FishController morsel = hit.gameObject.GetComponent<FishController>();
@@ -358,47 +361,46 @@ public class FishController : MonoBehaviour
                 Idle();
             }
         }
-        // Herbivores, and starving omnivores
-        if (Mathf.Min(food/maxFood, 1f) <= herbivorousness) { // Search for plant
-            foodItem.plant = null;
-            float bestDist = Mathf.Infinity;
-            // Dumb search method
-            /*foreach (Transform child in plants.transform) {
-                float dist = (transform.position - child.position).sqrMagnitude;
-                if (dist < bestDist && dist < sightDistance) {
+        // Herbivores, and non-desperate omnivores
+        // Search for plant
+        foodItem.plant = null;
+        bestDist = Mathf.Infinity;
+        // Dumb search method
+        /*foreach (Transform child in plants.transform) {
+            float dist = (transform.position - child.position).sqrMagnitude;
+            if (dist < bestDist && dist < sightDistance) {
+                bestDist = dist;
+                foodItem.plant = child.gameObject.GetComponent<AlgaeController>();
+                targetPosition = child.position;
+            }
+        }*/
+        // -- Collider based search
+        // Check a small area first
+        hitColliders = Physics.OverlapSphere(transform.position, 2, LayerMask.GetMask("Plants"));
+        if (hitColliders.Length == 0) {
+            hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Plants"));
+        }
+        if (hitColliders.Length != 0) {
+            foreach (Collider hit in hitColliders) {
+                float dist = (transform.position - hit.transform.position).sqrMagnitude;
+                if (dist < bestDist) {
                     bestDist = dist;
-                    foodItem.plant = child.gameObject.GetComponent<AlgaeController>();
-                    targetPosition = child.position;
-                }
-            }*/
-            // -- Collider based search
-            // Check a small area first
-            Collider[] hitColliders = Physics.OverlapSphere(transform.position, 2, LayerMask.GetMask("Plants"));
-            if (hitColliders.Length == 0) {
-                hitColliders = Physics.OverlapSphere(transform.position, Mathf.Sqrt(sightDistance), LayerMask.GetMask("Plants"));
-            }
-            if (hitColliders.Length != 0) {
-                foreach (Collider hit in hitColliders) {
-                    float dist = (transform.position - hit.transform.position).sqrMagnitude;
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        foodItem.plant = hit.gameObject.GetComponent<LeafController>();
-                        targetPosition = hit.transform.position;
-                    }
+                    foodItem.plant = hit.gameObject.GetComponent<LeafController>();
+                    targetPosition = hit.transform.position;
                 }
             }
+        }
 
-            if (foodItem.plant != null) {
-                Vector3 targetVec = foodItem.plant.transform.position-transform.position;
-                if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
-                    behavior = Behavior.eat;
-                } else {
-                    foodItem.plant = null;
-                    Idle();
-                }
+        if (foodItem.plant != null) {
+            Vector3 targetVec = foodItem.plant.transform.position-transform.position;
+            if (!Physics.Raycast(transform.position, targetVec, targetVec.magnitude, LayerMask.GetMask("Terrain"))) {
+                behavior = Behavior.eat;
             } else {
+                foodItem.plant = null;
                 Idle();
             }
+        } else {
+            Idle();
         }
     }
 

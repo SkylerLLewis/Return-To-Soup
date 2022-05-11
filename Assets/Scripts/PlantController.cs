@@ -15,6 +15,8 @@ public class PlantController : MonoBehaviour
           reproduceInterval = 200;
     float depth, depthFactor, growTimer, saveThreshold, reproduceTimer, birth,
           depthanin, reproduceCost, seedDelay;
+    int hibernationCounter= 0;
+    int hibernationLength;
     Color color;
     int leaves = 0;
     List<int> missingLeaves;
@@ -32,8 +34,8 @@ public class PlantController : MonoBehaviour
         birth = Time.time;
     }
     
-    public void SetStats(float d, float repCost, float sD, GameObject _baby, GameObject _leafPrefab, bool seeder=false) {
-        // Passed resources
+    public void SetStats(float d, float repCost, float sD, int hiber, GameObject _baby, GameObject _leafPrefab, bool seeder=false) {
+        // Passed game resources
         baby = _baby;
         leafPrefab = _leafPrefab;
 
@@ -50,8 +52,8 @@ public class PlantController : MonoBehaviour
         depthFactor = (50-depth)/50;
         if (depthanin > 0) {
             // Average depthanin and standard (depthanin 1 is just depthanin)
-            // Depthanin Starts at 50% efficiency, but only loses 0.25%/m
-            depthFactor = (depthFactor * (1-depthanin)) + ((0.5f - 0.5f*depth/200) * depthanin);
+            // Depthanin Starts at 60% efficiency, but only loses 0.20%/m
+            depthFactor = (depthFactor * (1-depthanin)) + ((0.60f - 0.5f*depth/250) * depthanin);
         }
 
         // Coloration
@@ -71,6 +73,9 @@ public class PlantController : MonoBehaviour
             food = Random.Range(reproduceCost/2, reproduceCost*3);
             Sprout();
         }
+
+        // Hibernation
+        hibernationLength = hiber;
     }
 
     public void Sprout() {
@@ -87,7 +92,7 @@ public class PlantController : MonoBehaviour
                 food += (20 + leaves*5) * depthFactor;
             }
         } else {
-            food -= 20;
+            food -= 10;
             if (food <= 0) {
                 Die();
             }
@@ -95,6 +100,19 @@ public class PlantController : MonoBehaviour
     }
 
     void Grow() {
+        // Hibernate if you just got eated
+        if (leaves == 0 && hibernationLength > 0 && hibernationCounter == 0 && food > reproduceCost/2) {
+            hibernationCounter = hibernationLength;
+            return;
+        }
+        // Hibernating
+        if (hibernationCounter > 0) {
+            hibernationCounter--;
+            if (hibernationCounter > 0) {
+                return;
+            }
+        }
+        // Grow!
         saveThreshold = 200+ 25*leaves;
         if (((leaves != 0 && food >= saveThreshold) || (leaves == 0 && food >= leafCost)) &&
         (leaves <= 60 && Mathf.Ceil(leaves/5)+1 < Mathf.Floor(depth))) {
@@ -161,14 +179,22 @@ public class PlantController : MonoBehaviour
             float newDepthanin = depthanin;
             float newReproduceCost = reproduceCost;
             float newSeedDelay = seedDelay;
+            int newHibernation = hibernationLength;
             if ((depthanin != 0 && depthanin != 1) || Random.Range(0,100) < 5) { // 5% chance to evolve depthanin
                 newDepthanin = Mathf.Clamp01(depthanin+Random.Range(-0.50f, 0.50f)); // max 50% variance
             }
             if (Random.Range(0, 100) < 5) { // 5% chance to change seed investment
                 newReproduceCost = reproduceCost * Random.Range(0.8f, 1.2f); // max 20% variance
             }
-            if (Random.Range(0,100) < 5) { // 5% chance to change it
+            if (Random.Range(0,100) < 5) { // 5% chance to change Seed delay
                 newSeedDelay = seedDelay * Random.Range(0.8f, 1.2f); // max 20% variance
+            }
+            if (Random.Range(0,100) < 5) { // 5% chance to change hibernation length
+                if (Random.Range(0,2) == 0 && hibernationLength > 0) {
+                    newHibernation--;
+                } else {
+                    newHibernation++;
+                }
             }
             GameObject clone = Instantiate(
                 baby,
@@ -176,7 +202,7 @@ public class PlantController : MonoBehaviour
                 Quaternion.identity,
                 roots.transform);
             clone.name = clone.name.Split('(')[0];
-            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost, newSeedDelay, baby, leafPrefab);
+            clone.GetComponent<PlantController>().SetStats(newDepthanin, newReproduceCost, newSeedDelay, newHibernation, baby, leafPrefab);
             food -= reproduceCost;
         }
         reproduceTimer = Time.time;
@@ -268,6 +294,7 @@ public class PlantController : MonoBehaviour
             labels += "Depthanin:\n"; values += "- \n";
         }
         labels += "Light:\n"; values += Mathf.RoundToInt(100f*depthFactor)+"%\n";
+        labels += "Hibernation:\n"; values += hibernationLength+"\n";
         labels += "Age:\n"; values += Mathf.RoundToInt(Time.time - birth)+"\n";
         panelLabels.text = labels;
         panelValues.text = values;
